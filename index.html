@@ -1,399 +1,434 @@
-/**
- * Victor Manufacturing - Customer Inquiry Portal (backend)
- * Google Apps Script bound to a Google Sheet.
- *
- * Receives a submission -> saves files to Drive -> adds a row to the Sheet
- * -> emails Victor (admin) and the customer.
- */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Victor Manufacturing &#x2013; Customer Inquiry</title>
+<style>
+  :root {
+    --red: #C1282D; --red-dark: #9E1F23; --ink: #1F2328; --muted: #5F6670;
+    --line: #DDE1E6; --bg: #F5F6F8; --card: #FFFFFF; --ok: #1E7F4F; --err: #C1282D;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 40px; }
+  header { text-align: center; padding: 20px 0 12px; }
+  header img { width: 180px; max-width: 60%; height: auto; }
+  header p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  h1 { font-size: 20px; margin: 12px 0 4px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--red);
+    margin: 0 0 12px; }
+  .lead { color: var(--muted); margin: 0 0 16px; font-size: 15px; }
+  .demo { background: #FFF4D6; border: 1px solid #E8C766; color: #6B5200; border-radius: 8px;
+    padding: 8px 12px; font-size: 13px; margin-bottom: 12px; }
 
+  /* Category list */
+  .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 12px;
+    text-align: left; cursor: pointer; font: inherit; color: inherit; min-height: 92px;
+    display: flex; flex-direction: column; gap: 4px; transition: border-color .15s, box-shadow .15s; }
+  .cat:hover, .cat:focus-visible { border-color: var(--red); box-shadow: 0 0 0 3px rgba(193,40,45,.12); outline: none; }
+  .cat .ic { font-size: 22px; line-height: 1; }
+  .cat b { font-size: 15px; }
+  .cat span { font-size: 12.5px; color: var(--muted); }
+  @media (max-width: 360px) { .cats { grid-template-columns: 1fr; } }
+
+  /* Form */
+  .back { background: none; border: 0; color: var(--red); font: inherit; font-weight: 600;
+    padding: 8px 0; cursor: pointer; }
+  .pill { display: inline-block; background: var(--red); color: #fff; border-radius: 999px;
+    padding: 3px 12px; font-size: 13px; font-weight: 600; }
+  .section { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; margin: 12px 0; }
+  .f { margin-bottom: 14px; }
+  .f:last-child { margin-bottom: 0; }
+  label.l { display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px; }
+  label.l .req { color: var(--red); }
+  label.l .opt { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date], input[type=time], select, textarea {
+    width: 100%; font: inherit; color: inherit; padding: 11px 12px; border: 1px solid #C9CED4;
+    border-radius: 8px; background: #fff; }
+  textarea { min-height: 96px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(193,40,45,.15); }
+  .bad input, .bad select, .bad textarea { border-color: var(--err); }
+  .msg { color: var(--err); font-size: 13px; margin-top: 4px; display: none; }
+  .bad .msg { display: block; }
+  .radios { display: flex; flex-wrap: wrap; gap: 8px; }
+  .radios label { display: flex; align-items: center; gap: 6px; border: 1px solid #C9CED4;
+    border-radius: 8px; padding: 9px 12px; cursor: pointer; font-size: 15px; }
+  .radios input { accent-color: var(--red); }
+  .files { border: 1.5px dashed #C9CED4; border-radius: 10px; padding: 14px; text-align: center; }
+  .files input { display: none; }
+  .files .pick { display: inline-block; background: #fff; border: 1px solid var(--red); color: var(--red);
+    font-weight: 600; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  .flist { list-style: none; padding: 0; margin: 10px 0 0; text-align: left; font-size: 14px; }
+  .flist li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0;
+    border-top: 1px solid var(--line); }
+  .flist button { background: none; border: 0; color: var(--red); cursor: pointer; font: inherit; }
+  .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+  .consent input { margin-top: 3px; accent-color: var(--red); width: 18px; height: 18px; flex: none; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .submit { width: 100%; background: var(--red); color: #fff; border: 0; border-radius: 10px;
+    padding: 14px; font: inherit; font-weight: 700; font-size: 17px; cursor: pointer; margin-top: 4px; }
+  .submit:hover { background: var(--red-dark); }
+  .submit[disabled] { opacity: .6; cursor: wait; }
+  .alert { background: #FDECEC; border: 1px solid #F1B7B9; color: #8A1C20; border-radius: 8px;
+    padding: 10px 12px; font-size: 14px; margin: 12px 0; display: none; }
+
+  /* Done */
+  .done { text-align: center; padding: 28px 16px; }
+  .tick { width: 64px; height: 64px; border-radius: 50%; background: var(--ok); color: #fff;
+    font-size: 36px; line-height: 64px; margin: 0 auto 12px; }
+  .ref { display: inline-block; font: 700 22px/1 ui-monospace, Menlo, Consolas, monospace;
+    background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 8px 0 14px; }
+  footer { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 24px; }
+  .venue { background: #FFF6F6; border: 1px solid #F1C9CB; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; font-size: 14px; }
+  .venue-h { font-weight: 700; color: var(--red); margin-bottom: 4px; }
+  .venue-a { margin: 2px 0 10px; }
+  .venue-b { display: flex; flex-wrap: wrap; gap: 8px; }
+  .vbtn { display: inline-block; background: #fff; border: 1px solid var(--red); color: var(--red); font: inherit; font-size: 13px;
+    font-weight: 600; border-radius: 8px; padding: 7px 12px; cursor: pointer; text-decoration: none; }
+  .vbtn.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="data:image/png;base64,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" alt="Victor Manufacturing">
+    <p>Customer Inquiry Form</p>
+  </header>
+
+  <div id="demoBanner" class="demo" hidden>DEMO MODE: nothing is sent. Submissions are simulated.</div>
+
+  <!-- Step 1: category -->
+  <section id="stepCat">
+    <h1>How can we help you?</h1>
+    <p class="lead">Choose the type of inquiry.</p>
+    <div class="cats" id="cats"></div>
+  </section>
+
+  <!-- Step 2: form -->
+  <section id="stepForm" hidden>
+    <button type="button" class="back" id="backBtn">&#x2190; Change category</button>
+    <div><span class="pill" id="catPill"></span></div>
+    <form id="form" novalidate>
+      <div class="section">
+        <h2>Company &amp; Contact</h2>
+        <div id="commonFields"></div>
+      </div>
+      <div class="section">
+        <h2 id="detailTitle">Inquiry Details</h2>
+        <div id="catFields"></div>
+      </div>
+      <div class="section" id="fileSection">
+        <h2 id="fileTitle">Attachments</h2>
+        <div class="files">
+          <label class="pick" for="fileInput">+ Add photos / PDF</label>
+          <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,application/pdf" multiple>
+          <div class="hint">JPG, PNG or PDF &#xB7; max 10 MB per file &#xB7; up to 5 files</div>
+          <ul class="flist" id="flist"></ul>
+        </div>
+        <div class="msg" id="fileMsg" style="display:block"></div>
+      </div>
+      <div class="section">
+        <label class="consent">
+          <input type="checkbox" id="consent">
+          <span>I agree that Victor Manufacturing may use the details above to respond to this inquiry and contact me.</span>
+        </label>
+        <div class="msg" id="consentMsg">Please tick to continue.</div>
+      </div>
+      <div class="hp" aria-hidden="true"><label>Website <input type="text" id="website" tabindex="-1" autocomplete="off"></label></div>
+      <div class="alert" id="alert"></div>
+      <button type="submit" class="submit" id="submitBtn">Submit Inquiry</button>
+    </form>
+  </section>
+
+  <!-- Step 3: done -->
+  <section id="stepDone" hidden>
+    <div class="done">
+      <div class="tick">&#x2713;</div>
+      <h1>Thank you! Your inquiry was received.</h1>
+      <p class="lead">Your reference number:</p>
+      <div class="ref" id="refNo"></div>
+      <p class="lead">A copy has been sent to <b id="doneEmail"></b>.<br>Our team will contact you soon.</p>
+      <button type="button" class="back" id="newBtn">Submit another inquiry</button>
+    </div>
+  </section>
+
+  <footer>&#xA9; Victor Manufacturing</footer>
+</div>
+
+<script>
 /* ===================== CONFIG ===================== */
-const CONFIG = {
-  ADMIN_EMAIL: 'technicalsupport@victortestingmachine.com',   // <- where new inquiries are sent
-  COMPANY_NAME: 'Victor Manufacturing',
-  SHEET_NAME: 'Inquiries',
-  DRIVE_FOLDER_NAME: 'Victor Inquiry Uploads',
-  REF_PREFIX: 'VIC',
-  // Secret shared with TDTS (inquiry_sync_config.json). Keep private. Empty = TDTS sync disabled.
-  TDTS_SYNC_KEY: 'M8Q06uPVPCmTOjtwPFZYPXxz6CUc3ty99L2TMvHZWFk',
-  TDTS_PAGE_SIZE: 500,
-  // Shown in the customer's email for Machine Demonstration requests (v1.3)
-  DEMO_VENUE_HTML: '<p style="font:14px Arial,sans-serif"><b>Demonstration venue</b><br>Victor Manufacturing<br>' +
-    '11, Jalan Meranti Permai 3, Taman Meranti Permai, 47100 Puchong, Selangor<br>' +
-    '<a href="https://maps.app.goo.gl/WwfLqXNnwoSb1dou6">Open in Google Maps</a><br>' +
-    'We will contact you to confirm the date and time.</p>',
-  MAX_FILE_MB: 10,
-  MAX_FILES: 5,
-  MAX_TOTAL_MB: 25,
-  FILE_TYPES: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+// Paste your Google Apps Script Web App URL here (only needed when hosting on GitHub Pages).
+// Leave empty "" for DEMO MODE. When hosted inside Apps Script, this is ignored.
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbzJEEqk3W5fT4tSbu_6fHSPg6GKemOgMzKO1BF3msp2V6DYUIOgiS5qDdlPfK9DC0g/exec";
+
+const MAX_FILE_MB = 10, MAX_FILES = 5, MAX_TOTAL_MB = 25;
+const FILE_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+
+/* Common fields (quotation info) */
+const COMMON = [
+  { id: "company", label: "Company name", type: "text", req: true, auto: "organization" },
+  { id: "address", label: "Company address", type: "textarea", req: true, rows: 3, auto: "street-address" },
+  { id: "pic", label: "Person in charge", type: "text", req: true, auto: "name" },
+  { id: "email", label: "Email", type: "email", req: true, auto: "email" },
+  { id: "tel", label: "Tel. no.", type: "tel", req: true, auto: "tel", ph: "e.g. 012-345 6789" },
+];
+
+/* Categories and their own fields. Edit freely. */
+const CATEGORIES = [
+  { id: "new", name: "New Inquiry", ic: "&#x1F4DD;", desc: "General question or quotation", files: "Attachments",
+    fields: [
+      { id: "subject", label: "Subject", type: "text", req: true },
+      { id: "details", label: "Details", type: "textarea", req: true, ph: "Tell us what you need" },
+    ] },
+  { id: "support", name: "Technical Support", ic: "&#x1F6E0;&#xFE0F;", desc: "Machine or software problem", files: "Photos / screenshots",
+    fields: [
+      { id: "machine", label: "Machine name / model", type: "text", req: true },
+      { id: "serial", label: "Serial no.", type: "text" },
+      { id: "problem", label: "Problem description", type: "textarea", req: true, ph: "What happened? When did it start?" },
+      { id: "error", label: "Error message (if any)", type: "text" },
+    ] },
+  { id: "calibration", name: "Calibration", ic: "&#x1F4CF;", desc: "Machine calibration service", files: "Photos / previous certificate",
+    fields: [
+      { id: "machine", label: "Machine name", type: "text", req: true },
+      { id: "serial", label: "Serial no.", type: "text", req: true },
+      { id: "capacity", label: "Capacity", type: "text", req: true, ph: "e.g. 100 kN" },
+      { id: "dueDate", label: "Calibration due date", type: "date" },
+      { id: "mode", label: "Calibration mode", type: "radio", req: true, options: ["Tensile", "Compression", "Both"] },
+      { id: "location", label: "Service location", type: "radio", options: ["On-site", "Victor lab"] },
+    ] },
+  { id: "jig", name: "Jig Fabrication", ic: "&#x2699;&#xFE0F;", desc: "Custom grips, jigs & fixtures", files: "Drawings / photos",
+    fields: [
+      { id: "machine", label: "Machine model the jig is for", type: "text", req: true },
+      { id: "testType", label: "Test type / standard", type: "text", req: true, ph: "e.g. Tensile, ASTM D638" },
+      { id: "specimen", label: "Specimen material & dimensions", type: "textarea", req: true, rows: 3 },
+      { id: "qty", label: "Quantity", type: "number", req: true, min: 1 },
+      { id: "reqDate", label: "Required date", type: "date" },
+    ] },
+  { id: "site", name: "Site Inspection", ic: "&#x1F4CD;", desc: "Visit to your site", files: "Photos",
+    fields: [
+      { id: "siteAddress", label: "Site address (if different from company address)", type: "textarea", rows: 3 },
+      { id: "purpose", label: "Purpose of inspection", type: "textarea", req: true },
+      { id: "machines", label: "Machine(s) involved", type: "text" },
+      { id: "prefDate", label: "Preferred date", type: "date" },
+    ] },
+  { id: "purchase", name: "Machine Purchase", ic: "&#x1F3ED;", desc: "Buy a new testing machine", files: "Specifications / photos",
+    fields: [
+      { id: "machineType", label: "Machine type", type: "text", req: true, ph: "e.g. Universal Testing Machine" },
+      { id: "capacity", label: "Capacity", type: "text", ph: "e.g. 50 kN" },
+      { id: "tests", label: "Test types / standards", type: "textarea", rows: 3 },
+      { id: "specimen", label: "Specimen material", type: "text" },
+      { id: "deliveryDate", label: "Target delivery date", type: "date" },
+      { id: "budget", label: "Budget", type: "text", opt: true },
+    ] },
+  { id: "demo", name: "Machine Demonstration", ic: "&#x1F52C;", desc: "See a machine in action at our lab", files: "Sample photos / specifications",
+    fields: [
+      { id: "venueInfo", type: "info" },
+      { id: "machine", label: "Machine name / model", type: "text", req: true, ph: "e.g. Universal Testing Machine 50 kN" },
+      { id: "testType", label: "Type of testing", type: "text", req: true, ph: "e.g. Tensile, Compression, Flexural" },
+      { id: "material", label: "Type of material", type: "text", req: true, ph: "e.g. Steel, Plastic, Rubber, Textile" },
+      { id: "capacity", label: "Testing capacity / range", type: "text", req: true, ph: "e.g. up to 50 kN" },
+      { id: "demoDate", label: "Preferred date", type: "date", req: true, minToday: true },
+      { id: "demoTime", label: "Preferred time", type: "time", req: true },
+      { id: "pax", label: "Number of attendees (pax)", type: "number", req: true, min: 1, max: 50 },
+    ] },
+  { id: "repair", name: "Repair & Maintenance", ic: "&#x1F527;", desc: "Fix or service a machine", files: "Photos",
+    fields: [
+      { id: "machine", label: "Machine name", type: "text", req: true },
+      { id: "serial", label: "Serial no.", type: "text" },
+      { id: "capacity", label: "Capacity", type: "text" },
+      { id: "service", label: "Service type", type: "radio", req: true, options: ["Repair", "Preventive maintenance"] },
+      { id: "problem", label: "Problem description", type: "textarea", req: true },
+      { id: "location", label: "Service location", type: "radio", options: ["On-site", "Victor lab"] },
+    ] },
+];
+
+/* Demonstration venue (shown in the Machine Demonstration form) */
+const VENUE = {
+  name: "Victor Manufacturing",
+  address: "11, Jalan Meranti Permai 3, Taman Meranti Permai, 47100 Puchong, Selangor",
+  map: "https://maps.app.goo.gl/WwfLqXNnwoSb1dou6",
 };
 
-const HEADERS = ['Ref No', 'Submitted At', 'Category', 'Company', 'Address', 'Person in Charge',
-  'Email', 'Tel', 'Details', 'Files', 'Status', 'Assigned To', 'Notes', 'Data (JSON)'];
+/* ===================== APP ===================== */
+const $ = (id) => document.getElementById(id);
+const IN_GAS = typeof google !== "undefined" && google.script && google.script.run;
+const DEMO = !IN_GAS && !ENDPOINT;
+let current = null, files = [];
 
-/* ===================== ENTRY POINTS ===================== */
+if (DEMO) $("demoBanner").hidden = false;
 
-// Option A: Apps Script hosts the page itself.
-function doGet(e) {
-  if (e && e.parameter && e.parameter.action === 'list') return listForTdts_(e.parameter);
-  return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('Victor Manufacturing - Customer Inquiry')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+// Build category buttons
+CATEGORIES.forEach((c) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "cat";
+  b.innerHTML = `<div class="ic">${c.ic}</div><b>${c.name}</b><span>${c.desc}</span>`;
+  b.onclick = () => openCategory(c.id);
+  $("cats").appendChild(b);
+});
+
+function todayISO() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function venueHTML() {
+  return `<div class="venue"><div class="venue-h">&#x1F4CD; Demonstration venue</div>
+    <b>${VENUE.name}</b><div class="venue-a" id="venueAddr">${VENUE.address}</div>
+    <div class="venue-b"><button type="button" class="vbtn" data-copy="address">Copy address</button>
+    <a class="vbtn" href="${VENUE.map}" target="_blank" rel="noopener">Open in Google Maps</a>
+    <button type="button" class="vbtn" data-copy="map">Copy map link</button></div>
+    <div class="hint">Demonstrations are held at our lab in Puchong. We will contact you to confirm the date and time.</div></div>`;
+}
+function copyText(text, btn) {
+  const done = () => { const t = btn.textContent; btn.textContent = "Copied \u2713"; btn.classList.add("ok");
+    setTimeout(() => { btn.textContent = t; btn.classList.remove("ok"); }, 1800); };
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text) && done()); }
+  else if (fallbackCopy(text)) done();
+}
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", "");
+  ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch (e) {} ta.remove(); return ok;
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-copy]"); if (!b) return;
+  copyText(b.dataset.copy === "map" ? VENUE.map : VENUE.name + ", " + VENUE.address, b);
+});
+const inputFields = (list) => list.filter((f) => f.type !== "info");
+
+function fieldHTML(f) {
+  if (f.type === "info") return venueHTML();
+  const star = f.req ? ' <span class="req">*</span>' : (f.opt ? ' <span class="opt">(optional)</span>' : "");
+  const name = `f_${f.id}`;
+  const ph = f.ph ? ` placeholder="${f.ph}"` : "";
+  const ac = f.auto ? ` autocomplete="${f.auto}"` : "";
+  let input;
+  if (f.type === "textarea") input = `<textarea id="${name}" name="${f.id}" rows="${f.rows || 4}" maxlength="3000"${ph}${ac}></textarea>`;
+  else if (f.type === "radio") input = `<div class="radios">${f.options.map((o) =>
+      `<label><input type="radio" name="${f.id}" value="${o}"> ${o}</label>`).join("")}</div>`;
+  else input = `<input id="${name}" name="${f.id}" type="${f.type}" maxlength="300"${f.min ? ` min="${f.min}"` : ""}${f.max ? ` max="${f.max}"` : ""}${f.minToday ? ` min="${todayISO()}"` : ""}${ph}${ac}>`;
+  const forAttr = f.type === "radio" ? "" : ` for="${name}"`;
+  return `<div class="f" data-id="${f.id}"><label class="l"${forAttr}>${f.label}${star}</label>${input}<div class="msg"></div></div>`;
 }
 
-// Option B: page hosted elsewhere (e.g. GitHub Pages) POSTs JSON here.
-function doPost(e) {
-  let result;
+function openCategory(id) {
+  current = CATEGORIES.find((c) => c.id === id);
+  $("catPill").textContent = current.name;
+  $("detailTitle").textContent = current.name + " Details";
+  $("fileTitle").textContent = current.files + " (optional)";
+  $("catFields").innerHTML = current.fields.map(fieldHTML).join("");
+  if (!$("commonFields").innerHTML) $("commonFields").innerHTML = COMMON.map(fieldHTML).join("");
+  files = []; renderFiles(); $("alert").style.display = "none";
+  show("stepForm");
+  try { history.pushState({ step: "form" }, ""); } catch (e) {}
+}
+
+function show(step) {
+  ["stepCat", "stepForm", "stepDone"].forEach((s) => ($(s).hidden = s !== step));
+  window.scrollTo(0, 0);
+}
+$("backBtn").onclick = () => show("stepCat");
+window.onpopstate = () => { if (!$("stepForm").hidden) show("stepCat"); };
+$("newBtn").onclick = () => { $("form").reset(); $("commonFields").innerHTML = ""; show("stepCat"); };
+
+/* Files */
+$("fileInput").onchange = (e) => {
+  const msgs = [];
+  for (const f of e.target.files) {
+    if (files.length >= MAX_FILES) { msgs.push(`Maximum ${MAX_FILES} files.`); break; }
+    if (!FILE_TYPES.includes(f.type)) { msgs.push(`${f.name}: only JPG, PNG or PDF allowed.`); continue; }
+    if (f.size > MAX_FILE_MB * 1048576) { msgs.push(`${f.name}: larger than ${MAX_FILE_MB} MB.`); continue; }
+    const total = files.reduce((s, x) => s + x.size, 0) + f.size;
+    if (total > MAX_TOTAL_MB * 1048576) { msgs.push(`Total attachments must be under ${MAX_TOTAL_MB} MB.`); break; }
+    files.push(f);
+  }
+  e.target.value = "";
+  $("fileMsg").textContent = msgs.join(" ");
+  renderFiles();
+};
+function renderFiles() {
+  $("flist").innerHTML = files.map((f, i) =>
+    `<li><span>${escapeHTML(f.name)} &#xB7; ${f.size < 1048576 ? Math.max(1, Math.round(f.size / 1024)) + " KB" : (f.size / 1048576).toFixed(1) + " MB"}</span><button type="button" data-i="${i}">Remove</button></li>`).join("");
+  $("flist").querySelectorAll("button").forEach((b) => (b.onclick = () => { files.splice(+b.dataset.i, 1); renderFiles(); }));
+}
+function escapeHTML(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
+
+/* Validation */
+function getVal(f) {
+  if (f.type === "radio") { const r = document.querySelector(`input[name="${f.id}"]:checked`); return r ? r.value : ""; }
+  return $("f_" + f.id).value.trim();
+}
+function validate() {
+  let ok = true, first = null;
+  const check = (f) => {
+    const box = document.querySelector(`.f[data-id="${f.id}"]`);
+    const v = getVal(f); let m = "";
+    if (f.req && !v) m = "Required.";
+    else if (v && f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) m = "Please enter a valid email.";
+    else if (v && f.type === "tel" && !/^[+\d][\d\s\-()]{6,19}$/.test(v)) m = "Please enter a valid phone number.";
+    else if (v && f.type === "number" && (isNaN(+v) || +v < (f.min || 0) || (f.max && +v > f.max) || !Number.isInteger(+v))) m = f.max ? `Please enter a whole number from ${f.min || 0} to ${f.max}.` : "Please enter a valid number.";
+    else if (v && f.minToday && v < todayISO()) m = "Please choose today or a later date.";
+    box.classList.toggle("bad", !!m); box.querySelector(".msg").textContent = m;
+    if (m) { ok = false; first = first || box; }
+  };
+  COMMON.forEach(check); inputFields(current.fields).forEach(check);
+  const c = $("consent").checked;
+  $("consentMsg").style.display = c ? "none" : "block";
+  if (!c) { ok = false; first = first || $("consent"); }
+  if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+  return ok;
+}
+document.addEventListener("input", (e) => { const box = e.target.closest(".f.bad"); if (box) box.classList.remove("bad"); });
+
+function readFile(f) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res({ name: f.name, type: f.type, size: f.size, data: r.result.split(",")[1] });
+    r.onerror = () => rej(new Error("Could not read " + f.name));
+    r.readAsDataURL(f);
+  });
+}
+
+/* Submit */
+$("form").onsubmit = async (e) => {
+  e.preventDefault();
+  $("alert").style.display = "none";
+  if (!validate()) return;
+  const btn = $("submitBtn"); btn.disabled = true; btn.textContent = "Submitting...";
   try {
-    const payload = JSON.parse(e.postData.contents);
-    result = (payload && payload.action) ? manageForTdts_(payload) : submitInquiry(payload);
+    const payload = { category: current.name, categoryId: current.id, common: {}, details: [], website: $("website").value };
+    COMMON.forEach((f) => (payload.common[f.id] = getVal(f)));
+    inputFields(current.fields).forEach((f) => payload.details.push({ id: f.id, label: f.label, value: getVal(f) }));
+    payload.files = await Promise.all(files.map(readFile));
+    const result = await send(payload);
+    if (!result || !result.ok) throw new Error((result && result.error) || "Submission failed.");
+    $("refNo").textContent = result.ref;
+    $("doneEmail").textContent = payload.common.email;
+    show("stepDone");
   } catch (err) {
-    result = { ok: false, error: String(err.message || err) };
-  }
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+    $("alert").textContent = "Sorry, your inquiry could not be sent: " + err.message + " Please try again, or contact us by WhatsApp.";
+    $("alert").style.display = "block";
+  } finally { btn.disabled = false; btn.textContent = "Submit Inquiry"; }
+};
+
+function send(payload) {
+  if (IN_GAS) return new Promise((res, rej) =>
+    google.script.run.withSuccessHandler(res).withFailureHandler((e) => rej(new Error(e.message || e))).submitInquiry(payload));
+  if (ENDPOINT) return fetch(ENDPOINT, { method: "POST", credentials: "omit", redirect: "follow",
+    headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+    .then((r) => r.text())
+    .then((t) => { try { return JSON.parse(t); } catch (e) { throw new Error("Server did not respond correctly."); } });
+  // DEMO
+  console.log("DEMO payload", { ...payload, files: payload.files.map((f) => f.name) });
+  window.__lastPayload = payload;
+  const d = new Date(), ref = `VIC-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}-0001`;
+  return new Promise((res) => setTimeout(() => res({ ok: true, ref }), 600));
 }
-
-/* ===================== CORE ===================== */
-
-function submitInquiry(p) {
-  // Honeypot: bots fill the hidden "website" field. Pretend success, save nothing.
-  if (p && p.website) return { ok: true, ref: 'VIC-0000-0000' };
-
-  const data = cleanPayload_(p);           // throws on invalid input
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  let ref, row;
-  try {
-    ref = nextRef_();
-    const fileLinks = saveFiles_(ref, data);
-    row = buildRow_(ref, data, fileLinks);
-    getSheet_().appendRow(row);
-  } finally {
-    lock.releaseLock();
-  }
-  sendEmails_(ref, data, row[9]);
-  return { ok: true, ref: ref };
-}
-
-/* ===================== VALIDATION ===================== */
-
-function cleanPayload_(p) {
-  if (!p || typeof p !== 'object') throw new Error('Invalid submission.');
-  const s = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 300);
-  const c = p.common || {};
-  const common = {
-    company: s(c.company), address: s(c.address, 1000), pic: s(c.pic),
-    email: s(c.email, 200), tel: s(c.tel, 30),
-  };
-  for (const k in common) if (!common[k]) throw new Error('Missing required field: ' + k + '.');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(common.email)) throw new Error('Invalid email address.');
-  if (!/^[+\d][\d\s\-()]{6,19}$/.test(common.tel)) throw new Error('Invalid phone number.');
-
-  const category = s(p.category, 60);
-  if (!category) throw new Error('Missing category.');
-
-  const details = (Array.isArray(p.details) ? p.details : []).slice(0, 30).map(function (d) {
-    return { id: s(d.id, 40), label: s(d.label, 100), value: s(d.value, 3000) };
-  });
-
-  const files = Array.isArray(p.files) ? p.files : [];
-  if (files.length > CONFIG.MAX_FILES) throw new Error('Too many files (max ' + CONFIG.MAX_FILES + ').');
-  let total = 0;
-  const cleanFiles = files.map(function (f) {
-    if (CONFIG.FILE_TYPES.indexOf(f.type) < 0) throw new Error('File type not allowed: ' + s(f.name, 100));
-    const bytes = Math.floor(String(f.data || '').length * 3 / 4);
-    if (bytes > CONFIG.MAX_FILE_MB * 1048576) throw new Error('File too large: ' + s(f.name, 100));
-    total += bytes;
-    return { name: s(f.name, 150).replace(/[\\/:*?"<>|]/g, '_') || 'file', type: f.type, data: String(f.data || '') };
-  });
-  if (total > CONFIG.MAX_TOTAL_MB * 1048576) throw new Error('Attachments too large in total.');
-
-  return { category: category, categoryId: s(p.categoryId, 30), common: common, details: details, files: cleanFiles };
-}
-
-/* ===================== STORAGE ===================== */
-
-function getSheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sh = ss.getSheetByName(CONFIG.SHEET_NAME);
-  if (!sh) sh = ss.insertSheet(CONFIG.SHEET_NAME);
-  if (sh.getLastRow() === 0) {
-    sh.appendRow(HEADERS);
-    sh.setFrozenRows(1);
-    sh.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold').setBackground('#C1282D').setFontColor('#FFFFFF');
-    sh.getRange('I:I').setWrap(true);
-  }
-  return sh;
-}
-
-// VIC-YYMM-0001, running number resets every month.
-function nextRef_() {
-  const props = PropertiesService.getScriptProperties();
-  const ym = Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyMM');
-  const key = 'counter_' + ym;
-  const n = Number(props.getProperty(key) || 0) + 1;
-  props.setProperty(key, String(n));
-  return CONFIG.REF_PREFIX + '-' + ym + '-' + ('000' + n).slice(-4);
-}
-
-function saveFiles_(ref, data) {
-  if (!data.files.length) return [];
-  const it = DriveApp.getFoldersByName(CONFIG.DRIVE_FOLDER_NAME);
-  const root = it.hasNext() ? it.next() : DriveApp.createFolder(CONFIG.DRIVE_FOLDER_NAME);
-  const folder = root.createFolder(ref + ' - ' + data.common.company);
-  data.files.forEach(function (f) {
-    const blob = Utilities.newBlob(Utilities.base64Decode(f.data), f.type, f.name);
-    folder.createFile(blob);
-  });
-  return [folder.getUrl()];
-}
-
-// Prevent Sheets formula injection (values starting with = + - @).
-function safe_(v) {
-  v = String(v == null ? '' : v);
-  return /^[=+\-@]/.test(v) ? "'" + v : v;
-}
-
-function detailsText_(details) {
-  return details.filter(function (d) { return d.value; })
-    .map(function (d) { return d.label + ': ' + d.value; }).join('\n');
-}
-
-function buildRow_(ref, data, fileLinks) {
-  const c = data.common;
-  const json = JSON.stringify({ ref: ref, category: data.category, categoryId: data.categoryId, common: c,
-    details: data.details.reduce(function (o, d) { o[d.id] = d.value; return o; }, {}) });
-  return [ref, new Date(), data.category, safe_(c.company), safe_(c.address), safe_(c.pic), safe_(c.email),
-    safe_(c.tel), safe_(detailsText_(data.details)), fileLinks.join('\n'), 'New', '', '', json];
-}
-
-/* ===================== EMAIL ===================== */
-
-function esc_(s) {
-  return String(s).replace(/[&<>"']/g, function (ch) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
-  });
-}
-
-function summaryHtml_(ref, data) {
-  const c = data.common;
-  const rows = [['Reference', ref], ['Category', data.category], ['Company', c.company], ['Address', c.address],
-    ['Person in charge', c.pic], ['Email', c.email], ['Tel', c.tel]]
-    .concat(data.details.filter(function (d) { return d.value; }).map(function (d) { return [d.label, d.value]; }))
-    .concat([['Attachments', data.files.length ? data.files.length + ' file(s)' : 'None']]);
-  return '<table style="border-collapse:collapse;font:14px Arial,sans-serif">' + rows.map(function (r) {
-    return '<tr><td style="padding:6px 12px 6px 0;color:#555;vertical-align:top;white-space:nowrap"><b>' +
-      esc_(r[0]) + '</b></td><td style="padding:6px 0;white-space:pre-wrap">' + esc_(r[1]) + '</td></tr>';
-  }).join('') + '</table>';
-}
-
-function sendEmails_(ref, data, filesLink) {
-  const c = data.common;
-  const table = summaryHtml_(ref, data);
-  const sheetUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl();
-
-  // 1) To Victor (reply goes straight to the customer)
-  MailApp.sendEmail({
-    to: CONFIG.ADMIN_EMAIL,
-    replyTo: c.email,
-    subject: '[New ' + data.category + '] ' + ref + ' - ' + c.company,
-    htmlBody: '<p>New inquiry received.</p>' + table +
-      (filesLink ? '<p><a href="' + esc_(filesLink) + '">Open attachments folder</a></p>' : '') +
-      '<p><a href="' + sheetUrl + '">Open inquiry sheet</a></p>',
-  });
-
-  // 2) Copy to the customer
-  MailApp.sendEmail({
-    to: c.email,
-    replyTo: CONFIG.ADMIN_EMAIL,
-    name: CONFIG.COMPANY_NAME,
-    subject: 'We received your inquiry - Ref ' + ref,
-    htmlBody: '<p>Dear ' + esc_(c.pic) + ',</p><p>Thank you for contacting ' + CONFIG.COMPANY_NAME +
-      '. We have received your <b>' + esc_(data.category) + '</b> inquiry. Our team will contact you soon.</p>' +
-      table + (data.categoryId === 'demo' ? CONFIG.DEMO_VENUE_HTML : '') +
-      '<p>Please quote reference <b>' + ref + '</b> in any follow-up.</p><p>Regards,<br>' +
-      CONFIG.COMPANY_NAME + '</p>',
-  });
-}
-
-/* ===================== TDTS SYNC (Phase 3) ===================== */
-// GET <exec URL>?action=list&key=<TDTS_SYNC_KEY>&since=<yyyy-MM-ddTHH:mm:ss>
-// Read-only: returns inquiries submitted at/after "since" (oldest first). Never changes the Sheet.
-function listForTdts_(p) {
-  const out = function (obj) {
-    return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
-  };
-  if (!CONFIG.TDTS_SYNC_KEY || String(p.key || '') !== CONFIG.TDTS_SYNC_KEY) return out({ ok: false, error: 'Unauthorized' });
-  const since = String(p.since || '');
-  const values = getSheet_().getDataRange().getValues();
-  if (values.length < 2) return out({ ok: true, rows: [], more: false });
-  const head = values[0].map(function (h) { return String(h).trim(); });
-  const col = function (name) { return head.indexOf(name); };
-  const ix = { ref: col('Ref No'), at: col('Submitted At'), category: col('Category'), company: col('Company'),
-    address: col('Address'), pic: col('Person in Charge'), email: col('Email'), tel: col('Tel'),
-    details: col('Details'), files: col('Files'), status: col('Status'), data: col('Data (JSON)') };
-  const get = function (row, i) { return i < 0 ? '' : row[i]; };
-  const fmt = function (v) {
-    return v instanceof Date ? Utilities.formatDate(v, 'Asia/Kuala_Lumpur', "yyyy-MM-dd'T'HH:mm:ss") : String(v || '');
-  };
-  let rows = [];
-  for (let r = 1; r < values.length; r++) {
-    const row = values[r];
-    const ref = String(get(row, ix.ref) || '').trim();
-    if (!ref) continue;
-    const at = fmt(get(row, ix.at));
-    if (since && at < since) continue;
-    let data = null;
-    try { data = JSON.parse(String(get(row, ix.data) || '')); } catch (err) { data = null; }
-    const unq = function (v) { v = String(v == null ? '' : v); return v.charAt(0) === "'" ? v.slice(1) : v; };
-    rows.push({ ref: ref, submitted_at: at, category: String(get(row, ix.category)), company: unq(get(row, ix.company)),
-      address: unq(get(row, ix.address)), pic: unq(get(row, ix.pic)), email: unq(get(row, ix.email)),
-      tel: unq(get(row, ix.tel)), details: unq(get(row, ix.details)), files_url: String(get(row, ix.files)).split('\n')[0],
-      sheet_status: String(get(row, ix.status) || ''), data: data });
-  }
-  rows.sort(function (a, b) { return a.submitted_at < b.submitted_at ? -1 : a.submitted_at > b.submitted_at ? 1 : 0; });
-  const more = rows.length > CONFIG.TDTS_PAGE_SIZE;
-  return out({ ok: true, rows: rows.slice(0, CONFIG.TDTS_PAGE_SIZE), more: more });
-}
-
-/* ===================== REMOVE / RESTORE / DELETE (v1.2) ===================== */
-// Called by TDTS (POST JSON with the secret key): {action:'remove'|'restore'|'delete', key, ref, reason, by}
-// Rows are never deleted on "remove": Status becomes "Removed - <reason>" and the row is greyed out.
-// "delete" only works on rows that are already Removed: it deletes the row and moves the
-// attachments folder to Drive Trash (recoverable from Trash for 30 days).
-function manageForTdts_(p) {
-  if (!CONFIG.TDTS_SYNC_KEY || String(p.key || '') !== CONFIG.TDTS_SYNC_KEY) return { ok: false, error: 'Unauthorized' };
-  const ref = String(p.ref || '').trim();
-  if (!/^VIC-\d{4}-\d{4,6}$/.test(ref)) return { ok: false, error: 'Invalid reference' };
-  const action = String(p.action);
-  if (['remove', 'restore', 'delete'].indexOf(action) < 0) return { ok: false, error: 'Unknown action' };
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    const sh = getSheet_();
-    const found = findRow_(sh, ref);
-    if (!found) return action === 'delete' ? { ok: true, note: 'Already gone' } : { ok: false, error: 'Reference not found in the Sheet' };
-    const by = String(p.by || 'TDTS').slice(0, 60);
-    const reason = String(p.reason || 'Other').slice(0, 60);
-    if (action === 'remove') markRemoved_(sh, found, reason, 'Removed in TDTS by ' + by);
-    if (action === 'restore') markRestored_(sh, found, 'Restored in TDTS by ' + by);
-    if (action === 'delete') {
-      if (String(found.get('Status')).indexOf('Removed') !== 0) return { ok: false, error: 'Only removed inquiries can be deleted' };
-      deleteRowAndFiles_(sh, found);
-    }
-    return { ok: true };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function findRow_(sh, ref) {
-  const values = sh.getDataRange().getValues();
-  const head = values[0].map(function (h) { return String(h).trim(); });
-  const refCol = head.indexOf('Ref No');
-  for (let r = 1; r < values.length; r++) {
-    if (String(values[r][refCol]).trim() === ref) {
-      return { row: r + 1, head: head, values: values[r],
-        get: function (name) { const i = head.indexOf(name); return i < 0 ? '' : values[r][i]; },
-        col: function (name) { return head.indexOf(name) + 1; } };
-    }
-  }
-  return null;
-}
-
-function stamp_() { return Utilities.formatDate(new Date(), 'Asia/Kuala_Lumpur', 'yyyy-MM-dd HH:mm'); }
-
-function addNote_(sh, f, text) {
-  const c = f.col('Notes');
-  if (c < 1) return;
-  const old = String(sh.getRange(f.row, c).getValue() || '');
-  sh.getRange(f.row, c).setValue((old ? old + '\n' : '') + stamp_() + ' ' + text);
-}
-
-function markRemoved_(sh, f, reason, note) {
-  sh.getRange(f.row, f.col('Status')).setValue('Removed - ' + reason);
-  addNote_(sh, f, note + ' (' + reason + ')');
-  sh.getRange(f.row, 1, 1, sh.getLastColumn()).setFontColor('#9AA0A6').setFontLine('line-through');
-}
-
-function markRestored_(sh, f, note) {
-  sh.getRange(f.row, f.col('Status')).setValue('New');
-  addNote_(sh, f, note);
-  sh.getRange(f.row, 1, 1, sh.getLastColumn()).setFontColor(null).setFontLine('none');
-}
-
-function deleteRowAndFiles_(sh, f) {
-  const files = String(f.get('Files') || '');
-  const m = files.match(/folders\/([A-Za-z0-9_-]+)/);
-  if (m) {
-    try { DriveApp.getFolderById(m[1]).setTrashed(true); } catch (err) { /* folder already gone */ }
-  }
-  sh.deleteRow(f.row);
-}
-
-/* ---------- Sheet menu: manage spam / test inquiries directly in the Google Sheet ---------- */
-function onOpen() {
-  SpreadsheetApp.getUi().createMenu('Victor Inquiry')
-    .addItem('Mark selected row(s) as Removed (spam / test / duplicate)', 'menuRemoveSelected')
-    .addItem('Restore selected row(s)', 'menuRestoreSelected')
-    .addSeparator()
-    .addItem('Permanently delete ALL removed rows', 'menuDeleteRemoved')
-    .addToUi();
-}
-
-function selectedRefs_() {
-  const sh = getSheet_();
-  const range = SpreadsheetApp.getActiveRange();
-  if (!range || range.getSheet().getName() !== sh.getName()) return [];
-  const refs = [];
-  const vals = sh.getRange(range.getRow(), 1, range.getNumRows(), 1).getValues();
-  vals.forEach(function (v) { if (/^VIC-/.test(String(v[0]))) refs.push(String(v[0]).trim()); });
-  return refs;
-}
-
-function menuRemoveSelected() {
-  const ui = SpreadsheetApp.getUi();
-  const refs = selectedRefs_();
-  if (!refs.length) { ui.alert('Select the inquiry row(s) in the "' + CONFIG.SHEET_NAME + '" tab first.'); return; }
-  const r = ui.prompt('Remove ' + refs.length + ' inquiry(s)', 'Reason (e.g. Spam, Test, Duplicate, Wrong info):', ui.ButtonSet.OK_CANCEL);
-  if (r.getSelectedButton() !== ui.Button.OK) return;
-  const reason = (r.getResponseText() || 'Other').slice(0, 60);
-  const sh = getSheet_();
-  const who = Session.getActiveUser().getEmail() || 'Sheet user';
-  refs.forEach(function (ref) { const f = findRow_(sh, ref); if (f) markRemoved_(sh, f, reason, 'Removed in Sheet by ' + who); });
-  ui.alert(refs.length + ' inquiry(s) marked as Removed. TDTS will hide them at its next full sync (within about 1 hour, or press Sync now).');
-}
-
-function menuRestoreSelected() {
-  const ui = SpreadsheetApp.getUi();
-  const refs = selectedRefs_();
-  if (!refs.length) { ui.alert('Select the inquiry row(s) first.'); return; }
-  const sh = getSheet_();
-  const who = Session.getActiveUser().getEmail() || 'Sheet user';
-  refs.forEach(function (ref) { const f = findRow_(sh, ref); if (f) markRestored_(sh, f, 'Restored in Sheet by ' + who); });
-  ui.alert(refs.length + ' inquiry(s) restored.');
-}
-
-function menuDeleteRemoved() {
-  const ui = SpreadsheetApp.getUi();
-  const sh = getSheet_();
-  const values = sh.getDataRange().getValues();
-  const st = values[0].map(String).indexOf('Status');
-  const rows = [];
-  for (let r = 1; r < values.length; r++) if (String(values[r][st]).indexOf('Removed') === 0) rows.push(String(values[r][0]));
-  if (!rows.length) { ui.alert('There are no removed rows.'); return; }
-  const ok = ui.alert('Permanently delete ' + rows.length + ' removed row(s)?',
-    rows.join(', ') + '\n\nThe rows are deleted and their attachment folders go to Drive Trash. This cannot be undone in the Sheet.',
-    ui.ButtonSet.YES_NO);
-  if (ok !== ui.Button.YES) return;
-  rows.forEach(function (ref) { const f = findRow_(sh, ref); if (f) deleteRowAndFiles_(sh, f); });
-  ui.alert(rows.length + ' row(s) deleted. In TDTS they stay as "Removed" until an admin deletes them there.');
-}
-
-/* ===================== SETUP HELPER ===================== */
-// Run once from the editor to create the sheet header and grant permissions.
-function setup() {
-  getSheet_();
-  DriveApp.getRootFolder();
-  Logger.log('Setup OK. Remaining email quota today: ' + MailApp.getRemainingDailyQuota());
-}
+</script>
+</body>
+</html>
