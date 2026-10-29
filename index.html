@@ -137,6 +137,11 @@
   .hcard .use { margin-top: 8px; background: #fff; border: 1px solid #A8C3F5; color: #123B7A; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
   #staffBox { border-color: #A8C3F5; background: #F7FAFF; }
   #staffBox h2 { color: #123B7A; }
+  .editbar { background: #FFF4D6; border: 1px solid #E8C766; color: #6B5200; border-radius: 10px; padding: 10px 12px; margin: 8px 0 10px; font-size: 13.5px; display: grid; gap: 4px; }
+  .editbar button { justify-self: start; background: #fff; border: 1px solid #E8C766; border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer; }
+  .hcard .edit { margin: 8px 0 0 6px; background: #FFF4D6; border: 1px solid #E8C766; color: #6B5200; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .chg-add { color: #15803d; font-weight: 700; } .chg-mod { color: #b45309; font-weight: 700; } .chg-del { color: #b91c1c; font-weight: 700; }
+  body.editing #backBtn, body.editing .f[data-id="staffSource"], body.editing #staffCopyLbl, body.editing #staffCopyMsg { display: none !important; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -185,6 +190,9 @@
   <!-- Step 2: form -->
   <section id="stepForm" hidden>
     <button type="button" class="back" id="backBtn">&#x2190; Change category</button>
+    <div class="editbar" id="editBar" hidden><b>&#x270F;&#xFE0F; Editing <span id="editRef"></span></b>
+      <span>Change, add or clear any detail. Your changes replace what was saved. New files are added to the existing attachments.</span>
+      <button type="button" id="editCancel">Cancel edit</button></div>
     <div><span class="pill" id="catPill"></span></div>
     <form id="form" novalidate>
       <div class="section">
@@ -214,7 +222,7 @@
           <input type="text" id="staffBy" maxlength="60" placeholder="Your name"><div class="msg"></div></div>
         <div class="f" data-id="staffSource"><label class="l" for="staffSource">Inquiry received via <span class="req">*</span></label>
           <select id="staffSource"><option value="">- Select -</option></select><div class="msg"></div></div>
-        <label class="consent"><input type="checkbox" id="staffCopy"><span>Send confirmation email to the customer</span></label>
+        <label class="consent" id="staffCopyLbl"><input type="checkbox" id="staffCopy"><span>Send confirmation email to the customer</span></label>
         <div class="msg" id="staffCopyMsg"></div>
         <label class="consent" style="margin-top:10px"><input type="checkbox" id="staffCc"><span>Send a copy to other email(s)</span></label>
         <div class="f" data-id="staffCcTo" id="staffCcBox" hidden style="margin:8px 0 0 28px">
@@ -237,7 +245,7 @@
 
   <!-- Step 2b: review before submitting -->
   <section id="stepReview" hidden>
-    <h1>Review your inquiry</h1>
+    <h1 id="rvTitle">Review your inquiry</h1>
     <p class="lead">Please check your details. You can still edit them before submitting.</p>
     <div><span class="pill" id="rvPill"></span></div>
     <div id="reviewBody"></div>
@@ -484,7 +492,8 @@ async function loadHistory() {
       ${x.incomplete && x.incomplete.length ? `<span class="tag warn">Incomplete: ${escapeHTML(x.incomplete.join(", "))}</span>` : ""}
       ${x.hasFiles ? '<span class="tag">Attachments</span>' : ""}
       <details><summary>Details</summary><pre>${escapeHTML((x.address ? "Address: " + x.address + "\n" : "") + (x.details || "-"))}</pre></details>
-      <button type="button" class="use" data-i="${i}">Use these customer details</button></div>`).join("");
+      ${x.editedBy ? `<div class="meta">Last edited by ${escapeHTML(x.editedBy)} &middot; ${escapeHTML(String(x.editedAt).replace("T", " ").slice(0, 16))}</div>` : ""}
+      <button type="button" class="use" data-i="${i}">Use these customer details</button><button type="button" class="edit" data-i="${i}">&#x270F;&#xFE0F; Edit this inquiry</button></div>`).join("");
     $("histMore").hidden = histRows.length < histLimit;
   } catch (e) { $("histMsg").textContent = "Could not load past inquiries: " + e.message; }
 }
@@ -494,11 +503,53 @@ $("histBack").onclick = () => show(histFrom);
 $("histMore").onclick = () => { histLimit += 30; loadHistory(); };
 $("histQ").addEventListener("input", () => { clearTimeout(histTimer); histTimer = setTimeout(() => { histLimit = 30; loadHistory(); }, 450); });
 $("histList").addEventListener("click", (e) => {
+  const ed = e.target.closest(".edit"); if (ed) { startEdit(histRows[+ed.dataset.i]); return; }
   const b = e.target.closest(".use"); if (!b) return;
   const x = histRows[+b.dataset.i]; const p = { company: x.company, address: x.address, pic: x.pic, email: x.email, tel: x.tel };
   if (histFrom === "stepForm" && current) { applyPrefill(p); show("stepForm"); }
   else { prefill = p; show("stepCat"); }
 });
+
+/* ---------- Staff: edit an existing inquiry (v1.9) ---------- */
+let editing = null, startingEdit = false;
+function startEdit(x) {
+  const cat = CATEGORIES.find((c) => c.id === x.categoryId) || CATEGORIES.find((c) => c.name === x.category);
+  if (!cat) { $("histMsg").textContent = "This inquiry's category (" + x.category + ") is no longer in the form, so it can only be edited in TDTS."; return; }
+  startingEdit = true; endEdit(); resetAll(); startingEdit = false;
+  editing = { ref: x.ref, orig: x, extra: {} };
+  document.body.classList.add("editing");
+  $("editRef").textContent = x.ref + " (" + x.at + ")"; $("editBar").hidden = false;
+  openCategory(cat.id);
+  applyPrefill({ company: x.company, address: x.address, pic: x.pic, email: x.email, tel: x.tel });
+  ["company", "address", "pic", "email", "tel"].forEach((k) => { const el = $("f_" + k); if (el) el.value = x[k] || ""; });
+  const vals = x.fields || {};
+  cat.fields.forEach((f) => {
+    const v = vals[f.id]; if (v === undefined) return;
+    if (f.type === "radio") document.querySelectorAll(`input[name="${f.id}"]`).forEach((r) => (r.checked = r.value === v));
+    else if (f.type === "checks") { const set = String(v).split(", "); document.querySelectorAll(`input[name="${f.id}"]`).forEach((r) => (r.checked = set.includes(r.value))); }
+    else { const el = $("f_" + f.id); if (el) el.value = v; }
+  });
+  applyShowIf();
+  // Details from older versions of the form that are no longer shown are kept as they are.
+  const known = new Set(cat.fields.map((f) => f.id));
+  Object.keys(vals).forEach((k) => { if (!known.has(k) && vals[k]) editing.extra[k] = vals[k]; });
+  $("staffBy").value = (() => { try { return localStorage.getItem("vicStaffBy") || ""; } catch (e) { return ""; } })();
+  show("stepForm"); window.scrollTo(0, 0);
+}
+function endEdit() { editing = null; document.body.classList.remove("editing"); $("editBar").hidden = true; }
+$("editCancel").onclick = () => { if (confirm("Cancel editing? Nothing will be changed.")) { endEdit(); resetAll(); } };
+function changeRows(p) {
+  const o = editing.orig, out = [];
+  const cmp = (label, a, b) => { a = a || ""; b = b || "";
+    if (a === b) return;
+    if (!a) out.push(`<tr><td class="k">${escapeHTML(label)}</td><td class="v"><span class="chg-add">Added:</span> ${escapeHTML(b)}</td></tr>`);
+    else if (!b) out.push(`<tr><td class="k">${escapeHTML(label)}</td><td class="v"><span class="chg-del">Removed:</span> <s>${escapeHTML(a)}</s></td></tr>`);
+    else out.push(`<tr><td class="k">${escapeHTML(label)}</td><td class="v"><span class="chg-mod">Changed:</span> <s>${escapeHTML(a)}</s> &#x2192; ${escapeHTML(b)}</td></tr>`); };
+  COMMON.forEach((f) => cmp(f.label, o[f.id], p.common[f.id]));
+  p.details.forEach((d) => cmp(d.label, (o.fields || {})[d.id], d.value));
+  files.forEach((f) => out.push(`<tr><td class="k">New file</td><td class="v"><span class="chg-add">Added:</span> ${escapeHTML(f.name)}</td></tr>`));
+  return out.length ? out.join("") : '<tr><td class="v" style="font-weight:400">No changes.</td></tr>';
+}
 
 $("year").textContent = new Date().getFullYear();
 
@@ -579,6 +630,7 @@ function show(step) {
 $("backBtn").onclick = () => show("stepCat");
 window.onpopstate = () => { if (!$("stepForm").hidden) show("stepCat"); };
 function resetAll() {
+  if (editing && !startingEdit) endEdit();
   $("form").reset(); $("commonFields").innerHTML = ""; files = []; renderFiles();
   $("staffCcBox").hidden = true;
   if (staff) { try { $("staffBy").value = localStorage.getItem("vicStaffBy") || ""; } catch (e) {} }
@@ -644,7 +696,7 @@ function validate() {
   if (staff) {
     const sv = (id, msg) => { const box = document.querySelector(`.f[data-id="${id}"]`); const bad = !$(id).value.trim();
       box.classList.toggle("bad", bad); box.querySelector(".msg").textContent = bad ? msg : ""; if (bad) { ok = false; first = first || box; } };
-    sv("staffBy", "Enter your name."); sv("staffSource", "Choose how the inquiry was received.");
+    sv("staffBy", "Enter your name."); if (!editing) sv("staffSource", "Choose how the inquiry was received.");
     if (!["company", "pic", "tel", "email"].some((k) => $("f_" + k).value.trim())) {
       const box = document.querySelector('.f[data-id="company"]'); box.classList.add("bad");
       box.querySelector(".msg").textContent = "Enter at least a company, contact person, phone or email.";
@@ -658,7 +710,7 @@ function validate() {
       box.classList.toggle("bad", !!cm); box.querySelector(".msg").textContent = cm;
       if (cm) { ok = false; first = first || box; }
     }
-    const needEmail = $("staffCopy").checked && !$("f_email").value.trim();
+    const needEmail = !editing && $("staffCopy").checked && !$("f_email").value.trim();
     $("staffCopyMsg").textContent = needEmail ? "Enter the customer's email to send a confirmation." : "";
     $("staffCopyMsg").style.display = needEmail ? "block" : "none";
     if (needEmail) { ok = false; first = first || $("staffBox"); }
@@ -698,9 +750,23 @@ $("form").onsubmit = (e) => {
   }
   COMMON.forEach((f) => (pending.common[f.id] = getVal(f)));
   inputFields(current.fields).forEach((f) => pending.details.push({ id: f.id, label: f.label, value: getVal(f) }));
+  if (editing) {
+    Object.entries(editing.extra).forEach(([k, v]) => pending.details.push({ id: k, label: k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()), value: v }));
+    pending.edit = { ref: editing.ref };
+  }
   const row = (k, v) => `<tr><td class="k">${escapeHTML(k)}</td><td class="v">${v ? escapeHTML(v) : '<span style="color:var(--muted);font-weight:400">-</span>'}</td></tr>`;
   const cLabels = Object.fromEntries(COMMON.map((f) => [f.id, f.label]));
   $("rvPill").textContent = current.name;
+  $("rvTitle").textContent = editing ? "Review changes to " + editing.ref : "Review your inquiry";
+  $("rvSubmit").innerHTML = editing ? "&#x2713; Save changes" : "&#x2713; Confirm &amp; Submit";
+  if (editing) {
+    $("reviewBody").innerHTML = `<div class="rv" style="border-color:#E8C766;background:#FFFBEF"><h2 style="color:#6B5200">Changes</h2><table>${changeRows(pending)}</table></div>` +
+      `<div class="rv" style="border-color:#A8C3F5;background:#F7FAFF"><h2 style="color:#123B7A">Staff</h2><table>${row("Edited by", pending.staff.by) +
+        row("Copy to", pending.staff.copyTo || "No copy") + (pending.staff.missing.length ? row("Still missing", pending.staff.missing.join(", ")) : "")}</table></div>` +
+      `<div class="rv"><h2>Company &amp; Contact (after saving)</h2><table>${Object.entries(pending.common).map(([k, v]) => row(cLabels[k], v)).join("")}</table></div>` +
+      `<div class="rv"><h2>${escapeHTML(current.name)} Details (after saving)</h2><table>${pending.details.map((d) => row(d.label, d.value)).join("")}</table></div>`;
+    $("alert2").style.display = "none"; show("stepReview"); return;
+  }
   $("reviewBody").innerHTML = (staff ? `<div class="rv" style="border-color:#A8C3F5;background:#F7FAFF"><h2 style="color:#123B7A">Staff entry</h2><table>${
       row("Entered by", pending.staff.by) + row("Received via", pending.staff.source) +
       row("Confirmation to customer", pending.staff.sendCopy ? "Send to " + pending.common.email : "Do not send") +
@@ -713,13 +779,25 @@ $("form").onsubmit = (e) => {
   show("stepReview");
 };
 $("rvEdit").onclick = () => show("stepForm");
-$("rvCancel").onclick = () => { if (confirm("Cancel this inquiry? The details you entered will be cleared.")) { pending = null; resetAll(); } };
+$("rvCancel").onclick = () => { if (confirm(editing ? "Cancel editing? Nothing will be changed." : "Cancel this inquiry? The details you entered will be cleared.")) { pending = null; endEdit(); resetAll(); } };
 $("rvSubmit").onclick = async () => {
   if (!pending) return show("stepForm");
   const btn = $("rvSubmit"); btn.disabled = true; btn.textContent = "Submitting...";
   $("rvEdit").disabled = $("rvCancel").disabled = true;
   try {
     const payload = { ...pending, files: await Promise.all(files.map(readFile)) };
+    if (payload.edit) {
+      const r = await send({ action: "staffupdate", pin: staff.pin, ref: payload.edit.ref, by: payload.staff.by, category: payload.category,
+        categoryId: payload.categoryId, common: payload.common, details: payload.details, files: payload.files,
+        missing: payload.staff.missing, copyTo: payload.staff.copyTo });
+      if (!r || !r.ok) throw new Error((r && r.error) || "Could not save the changes.");
+      $("doneTitle").textContent = "Changes saved."; $("refNo").textContent = r.ref;
+      $("doneMsg").innerHTML = (r.changed && r.changed.length ? "Updated: <b>" + escapeHTML(r.changed.join(", ")) + "</b>." : "No changes were needed.") +
+        (payload.staff.copyTo && r.changed && r.changed.length ? "<br>Copy sent to <b>" + escapeHTML(payload.staff.copyTo) + "</b>." : "") +
+        "<br>TDTS shows the update within 5 minutes (or press Sync now).";
+      $("fixBox").hidden = true; $("newBtn").textContent = "Enter another inquiry";
+      pending = null; endEdit(); show("stepDone"); return;
+    }
     const result = await send(payload);
     if (!result || !result.ok) throw new Error((result && result.error) || "Submission failed.");
     $("refNo").textContent = result.ref;
@@ -739,7 +817,7 @@ $("rvSubmit").onclick = async () => {
   } catch (err) {
     $("alert2").textContent = "Sorry, your inquiry could not be sent: " + err.message + " Please try again, or contact us by WhatsApp.";
     $("alert2").style.display = "block";
-  } finally { btn.disabled = false; btn.innerHTML = "&#x2713; Confirm &amp; Submit"; $("rvEdit").disabled = $("rvCancel").disabled = false; }
+  } finally { btn.disabled = false; btn.innerHTML = editing ? "&#x2713; Save changes" : "&#x2713; Confirm &amp; Submit"; $("rvEdit").disabled = $("rvCancel").disabled = false; }
 };
 
 function send(payload) {
@@ -752,10 +830,13 @@ function send(payload) {
   // DEMO
   if (payload.action === "staffcheck") return Promise.resolve(payload.pin.length >= 8
     ? { ok: true, sources: ["Phone call", "WhatsApp", "Walk-in", "Email", "Site visit", "Exhibition / event", "Other"] } : { ok: false, error: "Incorrect staff PIN." });
+  if (payload.action === "staffupdate") { window.__lastUpdate = { ...payload, pin: "(hidden)", files: payload.files.map((f) => f.name) };
+    return Promise.resolve({ ok: true, ref: payload.ref, changed: ["Company", "Details"] }); }
   if (payload.action === "staffhistory") {
     const all = [
       { ref: "VIC-2610-0012", at: "2026-10-29 18:15", category: "Site Inspection", company: "ROHAS-EUCO INDUSTRIES BERHAD", address: "Lot 10, Bentong", pic: "Yusri", email: "victormax3308@gmail.com", tel: "017-901 9023", details: "Purpose of inspection: Check UTM", hasFiles: true, source: "Online form", enteredBy: "", incomplete: [] },
-      { ref: "VIC-2610-0011", at: "2026-10-29 17:02", category: "Calibration", company: "", address: "", pic: "Pak Ali", email: "", tel: "012-345 6789", details: "Equipment type: Hardness Tester", hasFiles: false, source: "Phone call", enteredBy: "Yusri", incomplete: ["Company name", "Serial no."] }];
+      { ref: "VIC-2610-0011", at: "2026-10-29 17:02", category: "Calibration", company: "", address: "", pic: "Pak Ali", email: "", tel: "012-345 6789", details: "Equipment type: Hardness Tester", hasFiles: false, source: "Phone call", enteredBy: "Yusri", incomplete: ["Company name", "Serial no."],
+        categoryId: "calibration", fields: { equipType: "Hardness Tester", params: "Hardness, Not sure - please advise", qty: "2", location: "Victor lab", mode: "Tensile" } }];
     const q = (payload.q || "").toLowerCase();
     return Promise.resolve({ ok: true, rows: all.filter((x) => !q || JSON.stringify(x).toLowerCase().includes(q)) });
   }
