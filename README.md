@@ -1,1 +1,1 @@
-# inquiry
+# inquiry form
