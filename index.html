@@ -247,14 +247,22 @@ const CATEGORIES = [
       { id: "problem", label: "Problem description", type: "textarea", req: true, ph: "What happened? When did it start?" },
       { id: "error", label: "Error message (if any)", type: "text" },
     ] },
-  { id: "calibration", name: "Calibration", ic: "&#x1F4CF;", desc: "Machine calibration service", files: "Photos / previous certificate",
+  { id: "calibration", name: "Calibration", ic: "&#x1F4CF;", desc: "Calibration of testing equipment", files: "Photos of nameplate / previous certificate",
     fields: [
-      { id: "machine", label: "Machine name", type: "text", req: true },
-      { id: "serial", label: "Serial no.", type: "text", req: true },
-      { id: "capacity", label: "Capacity", type: "text", req: true, ph: "e.g. 100 kN" },
+      { id: "equipType", label: "Equipment type", type: "select", req: true, options: ["Universal Testing Machine (UTM)",
+        "Compression Testing Machine", "Hardness Tester", "Force Gauge / Load Cell", "Extensometer", "Impact Tester",
+        "Torque Tester / Torque Wrench", "Other"] },
+      { id: "equipOther", label: "Please specify the equipment", type: "text", req: true, showIf: ["equipType", "Other"] },
+      { id: "machine", label: "Model / description", type: "text", req: true, ph: "e.g. WDW-100, HR-150A, digital force gauge" },
+      { id: "brand", label: "Brand / manufacturer", type: "text" },
+      { id: "serial", label: "Serial no.", type: "text", req: true, ph: "As shown on the nameplate" },
+      { id: "capacity", label: "Capacity / measuring range", type: "text", req: true, ph: "e.g. 100 kN, 0-500 N, HRA/HRB/HRC" },
+      { id: "params", label: "What needs calibrating?", type: "checks", req: true, options: ["Force - tension",
+        "Force - compression", "Displacement / extension", "Hardness", "Torque", "Speed", "Not sure - please advise"] },
+      { id: "qty", label: "Number of units", type: "number", req: true, min: 1, max: 100, value: "1" },
       { id: "dueDate", label: "Calibration due date", type: "date" },
-      { id: "mode", label: "Calibration mode", type: "radio", req: true, options: ["Tensile", "Compression", "Both"] },
       { id: "location", label: "Service location", type: "radio", options: ["On-site", "Victor lab"] },
+      { id: "remarks", label: "Remarks", type: "textarea", rows: 3, opt: true, ph: "e.g. specific test points, standard required, accessories" },
     ] },
   { id: "jig", name: "Jig Fabrication", ic: "&#x2699;&#xFE0F;", desc: "Custom grips, jigs & fixtures", files: "Drawings / photos",
     fields: [
@@ -270,6 +278,7 @@ const CATEGORIES = [
       { id: "purpose", label: "Purpose of inspection", type: "textarea", req: true },
       { id: "machines", label: "Machine(s) involved", type: "text" },
       { id: "prefDate", label: "Preferred date", type: "date" },
+      { id: "prefTime", label: "Preferred time", type: "time" },
     ] },
   { id: "purchase", name: "Machine Purchase", ic: "&#x1F3ED;", desc: "Buy a new testing machine", files: "Specifications / photos",
     fields: [
@@ -351,7 +360,7 @@ document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-copy]"); if (!b) return;
   copyText(b.dataset.copy === "map" ? VENUE.map : VENUE.name + ", " + VENUE.address, b);
 });
-const inputFields = (list) => list.filter((f) => f.type !== "info");
+const inputFields = (list) => list.filter((f) => f.type !== "info" && isShown(f));
 
 function fieldHTML(f) {
   if (f.type === "info") return venueHTML();
@@ -361,11 +370,16 @@ function fieldHTML(f) {
   const ac = f.auto ? ` autocomplete="${f.auto}"` : "";
   let input;
   if (f.type === "textarea") input = `<textarea id="${name}" name="${f.id}" rows="${f.rows || 4}" maxlength="3000"${ph}${ac}></textarea>`;
+  else if (f.type === "select") input = `<select id="${name}" name="${f.id}"><option value="">- Select -</option>${f.options.map((o) =>
+      `<option value="${o}">${o}</option>`).join("")}</select>`;
+  else if (f.type === "checks") input = `<div class="radios">${f.options.map((o) =>
+      `<label><input type="checkbox" name="${f.id}" value="${o}"> ${o}</label>`).join("")}</div>`;
   else if (f.type === "radio") input = `<div class="radios">${f.options.map((o) =>
       `<label><input type="radio" name="${f.id}" value="${o}"> ${o}</label>`).join("")}</div>`;
   else input = `<input id="${name}" name="${f.id}" type="${f.type}" maxlength="300"${f.min ? ` min="${f.min}"` : ""}${f.max ? ` max="${f.max}"` : ""}${f.minToday ? ` min="${todayISO()}"` : ""}${ph}${ac}>`;
-  const forAttr = f.type === "radio" ? "" : ` for="${name}"`;
-  return `<div class="f" data-id="${f.id}"><label class="l"${forAttr}>${f.label}${star}</label>${input}<div class="msg"></div></div>`;
+  const forAttr = (f.type === "radio" || f.type === "checks") ? "" : ` for="${name}"`;
+  const hide = f.showIf ? " hidden" : "";
+  return `<div class="f" data-id="${f.id}"${hide}><label class="l"${forAttr}>${f.label}${star}</label>${input}<div class="msg"></div></div>`;
 }
 
 function openCategory(id) {
@@ -374,6 +388,8 @@ function openCategory(id) {
   $("detailTitle").textContent = current.name + " Details";
   $("fileTitle").textContent = current.files + " (optional)";
   $("catFields").innerHTML = current.fields.map(fieldHTML).join("");
+  current.fields.forEach((f) => { if (f.value) { const el = $("f_" + f.id); if (el) el.value = f.value; } });
+  applyShowIf();
   if (!$("commonFields").innerHTML) $("commonFields").innerHTML = COMMON.map(fieldHTML).join("");
   files = []; renderFiles(); $("alert").style.display = "none";
   show("stepForm");
@@ -412,7 +428,18 @@ function renderFiles() {
 function escapeHTML(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
 
 /* Validation */
+function isShown(f) {
+  if (!f.showIf) return true;
+  const src = current.fields.find((x) => x.id === f.showIf[0]);
+  return src ? getVal(src) === f.showIf[1] : true;
+}
+function applyShowIf() {
+  if (!current) return;
+  current.fields.forEach((f) => { if (f.showIf) { const box = document.querySelector(`.f[data-id="${f.id}"]`); if (box) box.hidden = !isShown(f); } });
+}
+document.addEventListener("change", (e) => { if (e.target.closest("#catFields")) applyShowIf(); });
 function getVal(f) {
+  if (f.type === "checks") return Array.from(document.querySelectorAll(`input[name="${f.id}"]:checked`)).map((x) => x.value).join(", ");
   if (f.type === "radio") { const r = document.querySelector(`input[name="${f.id}"]:checked`); return r ? r.value : ""; }
   return $("f_" + f.id).value.trim();
 }
@@ -421,7 +448,7 @@ function validate() {
   const check = (f) => {
     const box = document.querySelector(`.f[data-id="${f.id}"]`);
     const v = getVal(f); let m = "";
-    if (f.req && !v) m = "Required.";
+    if (f.req && !v) m = f.type === "checks" ? "Please tick at least one." : "Required.";
     else if (v && f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) m = "Please enter a valid email.";
     else if (v && f.type === "tel" && !/^(\+|0)[\d\s\-()]{7,19}$/.test(v)) m = "Please include the leading 0 or country code, e.g. 012-345 6789 or +60 12-345 6789.";
     else if (v && f.type === "number" && (isNaN(+v) || +v < (f.min || 0) || (f.max && +v > f.max) || !Number.isInteger(+v))) m = f.max ? `Please enter a whole number from ${f.min || 0} to ${f.max}.` : "Please enter a valid number.";
