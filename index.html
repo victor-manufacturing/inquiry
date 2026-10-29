@@ -369,4 +369,13 @@ function send(payload) {
   if (ENDPOINT) return fetch(ENDPOINT, { method: "POST", credentials: "omit", redirect: "follow",
     headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
     .then((r) => r.text())
-    .then((t) => { try { return JSON.parse(t); } catch (e) { throw new Error("Server did not respo
+    .then((t) => { try { return JSON.parse(t); } catch (e) { throw new Error("Server did not respond correctly."); } });
+  // DEMO
+  console.log("DEMO payload", { ...payload, files: payload.files.map((f) => f.name) });
+  window.__lastPayload = payload;
+  const d = new Date(), ref = `VIC-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}-0001`;
+  return new Promise((res) => setTimeout(() => res({ ok: true, ref }), 600));
+}
+</script>
+</body>
+</html>
