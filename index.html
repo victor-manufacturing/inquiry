@@ -105,6 +105,18 @@
   .vbtn { display: inline-block; background: #fff; border: 1px solid var(--red); color: var(--red); font: inherit; font-size: 13px;
     font-weight: 600; border-radius: 8px; padding: 7px 12px; cursor: pointer; text-decoration: none; }
   .vbtn.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .rv { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px 16px; margin: 12px 0; }
+  .rv h2 { margin: 14px 0 8px; }
+  .rv table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  .rv td { padding: 8px 0; border-top: 1px solid var(--line); vertical-align: top; }
+  .rv td.k { color: var(--muted); width: 42%; padding-right: 10px; font-size: 13.5px; }
+  .rv td.v { white-space: pre-wrap; word-break: break-word; font-weight: 600; }
+  .rv tr:first-child td { border-top: 0; }
+  .rv-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 10px; }
+  .rvbtn { background: #fff; border: 1.5px solid #C9CED4; border-radius: 10px; padding: 12px; font: inherit; font-weight: 700; cursor: pointer; color: var(--ink); }
+  .rvbtn.danger { color: var(--err); border-color: #F1B7B9; }
+  .fixbox { text-align: left; background: #F2FBF5; border: 1px solid #BFE6CC; border-radius: 10px; padding: 12px 14px; margin: 6px 0 16px; font-size: 14px; }
+  .wa-big { display: inline-block; background: #25D366; color: #fff; font-weight: 700; border-radius: 8px; padding: 9px 14px; text-decoration: none; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -156,8 +168,22 @@
       </div>
       <div class="hp" aria-hidden="true"><label>Website <input type="text" id="website" tabindex="-1" autocomplete="off"></label></div>
       <div class="alert" id="alert"></div>
-      <button type="submit" class="submit" id="submitBtn">Submit Inquiry</button>
+      <button type="submit" class="submit" id="submitBtn">Review Inquiry &#x2192;</button>
     </form>
+  </section>
+
+  <!-- Step 2b: review before submitting -->
+  <section id="stepReview" hidden>
+    <h1>Review your inquiry</h1>
+    <p class="lead">Please check your details. You can still edit them before submitting.</p>
+    <div><span class="pill" id="rvPill"></span></div>
+    <div id="reviewBody"></div>
+    <div class="alert" id="alert2"></div>
+    <div class="rv-actions">
+      <button type="button" class="rvbtn" id="rvEdit">&#x270E; Edit</button>
+      <button type="button" class="rvbtn danger" id="rvCancel">&#x2715; Cancel</button>
+    </div>
+    <button type="button" class="submit" id="rvSubmit">&#x2713; Confirm &amp; Submit</button>
   </section>
 
   <!-- Step 3: done -->
@@ -168,6 +194,9 @@
       <p class="lead">Your reference number:</p>
       <div class="ref" id="refNo"></div>
       <p class="lead">A copy has been sent to <b id="doneEmail"></b>.<br>Our team will contact you soon.</p>
+      <div class="fixbox"><b>Need to correct something?</b><br>Please don't submit a new form. Send us your correction with your reference number instead:
+        <div style="margin-top:10px"><a class="wa-big" id="fixWa" target="_blank" rel="noopener" href="#">WhatsApp us your correction</a></div>
+        <div class="hint">Or reply to the confirmation email.</div></div>
       <button type="button" class="back" id="newBtn">Submit another inquiry</button>
     </div>
   </section>
@@ -352,12 +381,13 @@ function openCategory(id) {
 }
 
 function show(step) {
-  ["stepCat", "stepForm", "stepDone"].forEach((s) => ($(s).hidden = s !== step));
+  ["stepCat", "stepForm", "stepReview", "stepDone"].forEach((s) => ($(s).hidden = s !== step));
   window.scrollTo(0, 0);
 }
 $("backBtn").onclick = () => show("stepCat");
 window.onpopstate = () => { if (!$("stepForm").hidden) show("stepCat"); };
-$("newBtn").onclick = () => { $("form").reset(); $("commonFields").innerHTML = ""; show("stepCat"); };
+function resetAll() { $("form").reset(); $("commonFields").innerHTML = ""; files = []; renderFiles(); show("stepCat"); }
+$("newBtn").onclick = resetAll;
 
 /* Files */
 $("fileInput").onchange = (e) => {
@@ -393,7 +423,7 @@ function validate() {
     const v = getVal(f); let m = "";
     if (f.req && !v) m = "Required.";
     else if (v && f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) m = "Please enter a valid email.";
-    else if (v && f.type === "tel" && !/^[+\d][\d\s\-()]{6,19}$/.test(v)) m = "Please enter a valid phone number.";
+    else if (v && f.type === "tel" && !/^(\+|0)[\d\s\-()]{7,19}$/.test(v)) m = "Please include the leading 0 or country code, e.g. 012-345 6789 or +60 12-345 6789.";
     else if (v && f.type === "number" && (isNaN(+v) || +v < (f.min || 0) || (f.max && +v > f.max) || !Number.isInteger(+v))) m = f.max ? `Please enter a whole number from ${f.min || 0} to ${f.max}.` : "Please enter a valid number.";
     else if (v && f.minToday && v < todayISO()) m = "Please choose today or a later date.";
     box.classList.toggle("bad", !!m); box.querySelector(".msg").textContent = m;
@@ -418,25 +448,43 @@ function readFile(f) {
 }
 
 /* Submit */
-$("form").onsubmit = async (e) => {
+let pending = null;
+$("form").onsubmit = (e) => {
   e.preventDefault();
   $("alert").style.display = "none";
   if (!validate()) return;
-  const btn = $("submitBtn"); btn.disabled = true; btn.textContent = "Submitting...";
+  pending = { category: current.name, categoryId: current.id, common: {}, details: [], website: $("website").value };
+  COMMON.forEach((f) => (pending.common[f.id] = getVal(f)));
+  inputFields(current.fields).forEach((f) => pending.details.push({ id: f.id, label: f.label, value: getVal(f) }));
+  const row = (k, v) => `<tr><td class="k">${escapeHTML(k)}</td><td class="v">${v ? escapeHTML(v) : '<span style="color:var(--muted);font-weight:400">-</span>'}</td></tr>`;
+  const cLabels = Object.fromEntries(COMMON.map((f) => [f.id, f.label]));
+  $("rvPill").textContent = current.name;
+  $("reviewBody").innerHTML =
+    `<div class="rv"><h2>Company &amp; Contact</h2><table>${Object.entries(pending.common).map(([k, v]) => row(cLabels[k], v)).join("")}</table></div>` +
+    `<div class="rv"><h2>${escapeHTML(current.name)} Details</h2><table>${pending.details.map((d) => row(d.label, d.value)).join("")}</table></div>` +
+    `<div class="rv"><h2>Attachments</h2><table>${files.length ? files.map((f) => row("File", f.name)).join("") : row("Files", "")}</table></div>`;
+  $("alert2").style.display = "none";
+  show("stepReview");
+};
+$("rvEdit").onclick = () => show("stepForm");
+$("rvCancel").onclick = () => { if (confirm("Cancel this inquiry? The details you entered will be cleared.")) { pending = null; resetAll(); } };
+$("rvSubmit").onclick = async () => {
+  if (!pending) return show("stepForm");
+  const btn = $("rvSubmit"); btn.disabled = true; btn.textContent = "Submitting...";
+  $("rvEdit").disabled = $("rvCancel").disabled = true;
   try {
-    const payload = { category: current.name, categoryId: current.id, common: {}, details: [], website: $("website").value };
-    COMMON.forEach((f) => (payload.common[f.id] = getVal(f)));
-    inputFields(current.fields).forEach((f) => payload.details.push({ id: f.id, label: f.label, value: getVal(f) }));
-    payload.files = await Promise.all(files.map(readFile));
+    const payload = { ...pending, files: await Promise.all(files.map(readFile)) };
     const result = await send(payload);
     if (!result || !result.ok) throw new Error((result && result.error) || "Submission failed.");
     $("refNo").textContent = result.ref;
     $("doneEmail").textContent = payload.common.email;
+    $("fixWa").href = "https://wa.me/60182215168?text=" + encodeURIComponent("Hi Victor Manufacturing, I need to correct my inquiry " + result.ref + ": ");
+    pending = null;
     show("stepDone");
   } catch (err) {
-    $("alert").textContent = "Sorry, your inquiry could not be sent: " + err.message + " Please try again, or contact us by WhatsApp.";
-    $("alert").style.display = "block";
-  } finally { btn.disabled = false; btn.textContent = "Submit Inquiry"; }
+    $("alert2").textContent = "Sorry, your inquiry could not be sent: " + err.message + " Please try again, or contact us by WhatsApp.";
+    $("alert2").style.display = "block";
+  } finally { btn.disabled = false; btn.innerHTML = "&#x2713; Confirm &amp; Submit"; $("rvEdit").disabled = $("rvCancel").disabled = false; }
 };
 
 function send(payload) {
