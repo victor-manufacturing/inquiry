@@ -49,7 +49,7 @@
   label.l .req { color: var(--red); }
   label.l .opt { color: var(--muted); font-weight: 400; font-size: 12.5px; }
   .hint { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
-  input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date], input[type=time], select, textarea {
+  input[type=text], input[type=email], input[type=tel], input[type=number], input[type=date], input[type=time], input[type=search], input[type=password], select, textarea {
     width: 100%; font: inherit; color: inherit; padding: 11px 12px; border: 1px solid #C9CED4;
     border-radius: 8px; background: #fff; }
   textarea { min-height: 96px; resize: vertical; }
@@ -119,10 +119,22 @@
   .wa-big { display: inline-block; background: #25D366; color: #fff; font-weight: 700; border-radius: 8px; padding: 9px 14px; text-decoration: none; }
   .staffbar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; background: #E8F0FE; border: 1px solid #A8C3F5;
     color: #123B7A; border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; }
-  .staffbar #staffForget { margin-left: auto; }
-  .staffbar #staffForget + #staffExit { margin-left: 0; }
+  .staffbar #staffHistBtn { margin-left: auto; }
+  .staffbar #staffHistBtn ~ button { margin-left: 0; }
   .staffbar button { margin-left: auto; background: #fff; border: 1px solid #A8C3F5; border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer; }
-  body.staff .f[data-id="email"] .req, body.staff .f[data-id="address"] .req { display: none; }
+  body.staff #commonFields .req, body.staff #catFields .req { display: none; }
+  .hist-search { display: flex; gap: 8px; margin: 10px 0; }
+  .hist-search input { flex: 1; }
+  .hcard { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; font-size: 14px; }
+  .hcard .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .hcard .ref { font: 700 14px ui-monospace, Menlo, Consolas, monospace; border: 0; padding: 0; margin: 0; background: none; }
+  .hcard .meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .hcard .tag { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; margin: 4px 4px 0 0;
+    background: #E8F0FE; color: #123B7A; border: 1px solid #A8C3F5; }
+  .hcard .tag.warn { background: #FFF4D6; color: #6B5200; border-color: #E8C766; }
+  .hcard details { margin-top: 8px; }
+  .hcard pre { white-space: pre-wrap; font: inherit; margin: 6px 0 0; background: var(--bg); border-radius: 8px; padding: 8px; }
+  .hcard .use { margin-top: 8px; background: #fff; border: 1px solid #A8C3F5; color: #123B7A; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
   #staffBox { border-color: #A8C3F5; background: #F7FAFF; }
   #staffBox h2 { color: #123B7A; }
   [hidden] { display: none !important; }
@@ -136,8 +148,19 @@
   </header>
 
   <div id="demoBanner" class="demo" hidden>DEMO MODE: nothing is sent. Submissions are simulated.</div>
-  <div id="staffBanner" class="staffbar" hidden><b>&#x1F512; STAFF ENTRY MODE</b><span>No email is sent unless you tick "Send confirmation".</span>
-    <button type="button" id="staffForget" hidden>Forget this device</button><button type="button" id="staffExit">Exit</button></div>
+  <div id="staffBanner" class="staffbar" hidden><b>&#x1F512; STAFF ENTRY MODE</b><span>No email is sent unless you tick one in the Staff entry box.</span>
+    <button type="button" id="staffHistBtn">&#x1F4CB; Past inquiries</button><button type="button" id="staffForget" hidden>Forget this device</button><button type="button" id="staffExit">Exit</button></div>
+
+  <!-- Staff: past inquiries -->
+  <section id="stepHistory" hidden>
+    <button type="button" class="back" id="histBack">&#x2190; Back</button>
+    <h1>Past inquiries</h1>
+    <p class="lead" style="margin-bottom:0">Customer and staff entries, newest first. Removed inquiries are not shown.</p>
+    <div class="hist-search"><input type="search" id="histQ" placeholder="Search name, company, phone, email, ref or details"></div>
+    <div id="histMsg" class="hint"></div>
+    <div id="histList"></div>
+    <button type="button" class="rvbtn" id="histMore" hidden style="width:100%">Show more</button>
+  </section>
 
   <!-- Staff unlock (only when the link ends with #staff) -->
   <section id="stepStaff" hidden>
@@ -166,6 +189,7 @@
     <form id="form" novalidate>
       <div class="section">
         <h2>Company &amp; Contact</h2>
+        <button type="button" class="rvbtn staffonly" id="findPast" hidden style="width:100%;margin-bottom:12px;padding:9px">&#x1F50D; Fill from a past inquiry</button>
         <div id="commonFields"></div>
       </div>
       <div class="section">
@@ -184,12 +208,19 @@
       </div>
       <div class="section staffonly" id="staffBox" hidden>
         <h2>Staff entry</h2>
+        <p class="hint" style="margin:-4px 0 12px">Staff entries can be saved with missing details. Only <b>Entered by</b>, <b>Received via</b>
+          and one way to identify the customer (company, contact person, phone or email) are needed. Missing items are listed in TDTS.</p>
         <div class="f" data-id="staffBy"><label class="l" for="staffBy">Entered by <span class="req">*</span></label>
           <input type="text" id="staffBy" maxlength="60" placeholder="Your name"><div class="msg"></div></div>
         <div class="f" data-id="staffSource"><label class="l" for="staffSource">Inquiry received via <span class="req">*</span></label>
           <select id="staffSource"><option value="">- Select -</option></select><div class="msg"></div></div>
         <label class="consent"><input type="checkbox" id="staffCopy"><span>Send confirmation email to the customer</span></label>
         <div class="msg" id="staffCopyMsg"></div>
+        <label class="consent" style="margin-top:10px"><input type="checkbox" id="staffCc"><span>Send a copy to other email(s)</span></label>
+        <div class="f" data-id="staffCcTo" id="staffCcBox" hidden style="margin:8px 0 0 28px">
+          <input type="text" id="staffCcTo" inputmode="email" autocomplete="email" maxlength="600"
+            placeholder="e.g. yusri@victortestingmachine.com, sales@victortestingmachine.com">
+          <div class="hint">Separate several emails with a comma. Remembered on this device.</div><div class="msg"></div></div>
       </div>
       <div class="section" id="consentBox">
         <label class="consent">
@@ -383,6 +414,7 @@ function enterStaff(pin, sources) {
   $("staffSource").innerHTML = '<option value="">- Select -</option>' + staff.sources.map((x) => `<option>${escapeHTML(x)}</option>`).join("");
   try { $("staffBy").value = localStorage.getItem("vicStaffBy") || ""; } catch (e) {}
   $("staffForget").hidden = !dev.get();
+  $("findPast").hidden = false;
   show("stepCat");
 }
 function exitStaff() {
@@ -405,8 +437,13 @@ $("staffCancel").onclick = () => location.replace(location.pathname);
 $("staffExit").onclick = exitStaff;
 $("staffForget").onclick = () => { if (confirm("Forget the staff PIN on this device?")) { dev.set(null); exitStaff(); } };
 $("staffCopy").addEventListener("change", () => { $("staffCopyMsg").style.display = "none"; });
+$("staffCc").addEventListener("change", () => {
+  $("staffCcBox").hidden = !$("staffCc").checked;
+  if ($("staffCc").checked && !$("staffCcTo").value) { try { $("staffCcTo").value = localStorage.getItem("vicStaffCc") || ""; } catch (e) {} }
+});
+function ccList() { return $("staffCcTo").value.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean); }
 function showUnlock(msg) {
-  ["stepCat", "stepForm", "stepReview", "stepDone"].forEach((x) => ($(x).hidden = true));
+  ["stepCat", "stepForm", "stepReview", "stepDone", "stepHistory"].forEach((x) => ($(x).hidden = true));
   $("stepStaff").hidden = false; $("staffPinMsg").textContent = msg || "";
 }
 if (location.hash === "#staff") {
@@ -422,6 +459,47 @@ if (location.hash === "#staff") {
   }
   else showUnlock();
 }
+/* ---------- Staff: past inquiries (v1.7) ---------- */
+let prefill = null, histFrom = "stepCat", histLimit = 30, histTimer = null, histRows = [];
+function applyPrefill(p) {
+  ["company", "address", "pic", "email", "tel"].forEach((k) => { const el = $("f_" + k); if (el && p[k]) { el.value = p[k]; el.closest(".f").classList.remove("bad"); } });
+}
+function openHistory() {
+  histFrom = ["stepForm", "stepReview", "stepDone"].find((x) => !$(x).hidden) || "stepCat";
+  if (histFrom !== "stepForm") histFrom = "stepCat";
+  histLimit = 30; show("stepHistory"); loadHistory();
+}
+async function loadHistory() {
+  $("histMsg").textContent = "Loading..."; $("histMore").hidden = true;
+  try {
+    const r = await send({ action: "staffhistory", pin: staff.pin, q: $("histQ").value.trim(), limit: histLimit });
+    if (!r || !r.ok) throw new Error((r && r.error) || "Could not load.");
+    histRows = r.rows || [];
+    $("histMsg").textContent = histRows.length ? "" : "No inquiries found.";
+    $("histList").innerHTML = histRows.map((x, i) => `<div class="hcard"><div class="top"><span class="ref">${escapeHTML(x.ref)}</span>
+      <span class="meta">${escapeHTML(x.at)}</span></div>
+      <div><b>${escapeHTML(x.company || x.pic || "(no name)")}</b> &middot; ${escapeHTML(x.category)}</div>
+      <div class="meta">${escapeHTML([x.pic, x.tel, x.email].filter(Boolean).join(" \u00b7 "))}</div>
+      <span class="tag">${x.enteredBy ? "Staff &middot; " + escapeHTML(x.source) + " &middot; " + escapeHTML(x.enteredBy) : "Online form"}</span>
+      ${x.incomplete && x.incomplete.length ? `<span class="tag warn">Incomplete: ${escapeHTML(x.incomplete.join(", "))}</span>` : ""}
+      ${x.hasFiles ? '<span class="tag">Attachments</span>' : ""}
+      <details><summary>Details</summary><pre>${escapeHTML((x.address ? "Address: " + x.address + "\n" : "") + (x.details || "-"))}</pre></details>
+      <button type="button" class="use" data-i="${i}">Use these customer details</button></div>`).join("");
+    $("histMore").hidden = histRows.length < histLimit;
+  } catch (e) { $("histMsg").textContent = "Could not load past inquiries: " + e.message; }
+}
+$("staffHistBtn").onclick = openHistory;
+$("findPast").onclick = openHistory;
+$("histBack").onclick = () => show(histFrom);
+$("histMore").onclick = () => { histLimit += 30; loadHistory(); };
+$("histQ").addEventListener("input", () => { clearTimeout(histTimer); histTimer = setTimeout(() => { histLimit = 30; loadHistory(); }, 450); });
+$("histList").addEventListener("click", (e) => {
+  const b = e.target.closest(".use"); if (!b) return;
+  const x = histRows[+b.dataset.i]; const p = { company: x.company, address: x.address, pic: x.pic, email: x.email, tel: x.tel };
+  if (histFrom === "stepForm" && current) { applyPrefill(p); show("stepForm"); }
+  else { prefill = p; show("stepCat"); }
+});
+
 $("year").textContent = new Date().getFullYear();
 
 // Build category buttons
@@ -488,19 +566,21 @@ function openCategory(id) {
   current.fields.forEach((f) => { if (f.value) { const el = $("f_" + f.id); if (el) el.value = f.value; } });
   applyShowIf();
   if (!$("commonFields").innerHTML) $("commonFields").innerHTML = COMMON.map(fieldHTML).join("");
+  if (prefill) { applyPrefill(prefill); prefill = null; }
   files = []; renderFiles(); $("alert").style.display = "none";
   show("stepForm");
   try { history.pushState({ step: "form" }, ""); } catch (e) {}
 }
 
 function show(step) {
-  ["stepStaff", "stepCat", "stepForm", "stepReview", "stepDone"].forEach((s) => ($(s).hidden = s !== step));
+  ["stepStaff", "stepHistory", "stepCat", "stepForm", "stepReview", "stepDone"].forEach((s) => ($(s).hidden = s !== step));
   window.scrollTo(0, 0);
 }
 $("backBtn").onclick = () => show("stepCat");
 window.onpopstate = () => { if (!$("stepForm").hidden) show("stepCat"); };
 function resetAll() {
   $("form").reset(); $("commonFields").innerHTML = ""; files = []; renderFiles();
+  $("staffCcBox").hidden = true;
   if (staff) { try { $("staffBy").value = localStorage.getItem("vicStaffBy") || ""; } catch (e) {} }
   show("stepCat");
 }
@@ -544,12 +624,14 @@ function getVal(f) {
   if (f.type === "radio") { const r = document.querySelector(`input[name="${f.id}"]:checked`); return r ? r.value : ""; }
   return $("f_" + f.id).value.trim();
 }
+let missing = [];
 function validate() {
-  let ok = true, first = null;
+  let ok = true, first = null; missing = [];
   const check = (f) => {
     const box = document.querySelector(`.f[data-id="${f.id}"]`);
     const v = getVal(f); let m = "";
-    const req = f.req && !(staff && (f.id === "email" || f.id === "address"));
+    const req = f.req && !staff;   // staff mode: nothing is compulsory; empty required fields are listed as missing
+    if (staff && f.req && !v) missing.push(f.label);
     if (req && !v) m = f.type === "checks" ? "Please tick at least one." : "Required.";
     else if (v && f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) m = "Please enter a valid email.";
     else if (v && f.type === "tel" && !/^(\+|0)[\d\s\-()]{7,19}$/.test(v)) m = "Please include the leading 0 or country code, e.g. 012-345 6789 or +60 12-345 6789.";
@@ -563,6 +645,19 @@ function validate() {
     const sv = (id, msg) => { const box = document.querySelector(`.f[data-id="${id}"]`); const bad = !$(id).value.trim();
       box.classList.toggle("bad", bad); box.querySelector(".msg").textContent = bad ? msg : ""; if (bad) { ok = false; first = first || box; } };
     sv("staffBy", "Enter your name."); sv("staffSource", "Choose how the inquiry was received.");
+    if (!["company", "pic", "tel", "email"].some((k) => $("f_" + k).value.trim())) {
+      const box = document.querySelector('.f[data-id="company"]'); box.classList.add("bad");
+      box.querySelector(".msg").textContent = "Enter at least a company, contact person, phone or email.";
+      ok = false; first = first || box;
+    }
+    if ($("staffCc").checked) {
+      const list = ccList(), box = $("staffCcBox"); let cm = "";
+      if (!list.length) cm = "Enter at least one email, or untick this box.";
+      else if (list.length > 10) cm = "Maximum 10 emails.";
+      else { const bad = list.find((x) => !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/.test(x)); if (bad) cm = "Not a valid email: " + bad; }
+      box.classList.toggle("bad", !!cm); box.querySelector(".msg").textContent = cm;
+      if (cm) { ok = false; first = first || box; }
+    }
     const needEmail = $("staffCopy").checked && !$("f_email").value.trim();
     $("staffCopyMsg").textContent = needEmail ? "Enter the customer's email to send a confirmation." : "";
     $("staffCopyMsg").style.display = needEmail ? "block" : "none";
@@ -594,7 +689,11 @@ $("form").onsubmit = (e) => {
   if (!validate()) return;
   pending = { category: current.name, categoryId: current.id, common: {}, details: [], website: $("website").value };
   if (staff) {
-    pending.staff = { pin: staff.pin, by: $("staffBy").value.trim(), source: $("staffSource").value, sendCopy: $("staffCopy").checked };
+    const cc = $("staffCc").checked ? ccList() : [];
+    if (cc.length) { try { localStorage.setItem("vicStaffCc", cc.join(", ")); } catch (e) {} }
+    pending.staff = { pin: staff.pin, by: $("staffBy").value.trim(), source: $("staffSource").value, sendCopy: $("staffCopy").checked,
+      copyTo: cc.join(", "),
+      missing: missing.slice() };
     try { localStorage.setItem("vicStaffBy", pending.staff.by); } catch (e) {}
   }
   COMMON.forEach((f) => (pending.common[f.id] = getVal(f)));
@@ -604,7 +703,9 @@ $("form").onsubmit = (e) => {
   $("rvPill").textContent = current.name;
   $("reviewBody").innerHTML = (staff ? `<div class="rv" style="border-color:#A8C3F5;background:#F7FAFF"><h2 style="color:#123B7A">Staff entry</h2><table>${
       row("Entered by", pending.staff.by) + row("Received via", pending.staff.source) +
-      row("Confirmation email", pending.staff.sendCopy ? "Send to " + pending.common.email : "Do not send")}</table></div>` : "") +
+      row("Confirmation to customer", pending.staff.sendCopy ? "Send to " + pending.common.email : "Do not send") +
+      row("Copy to", pending.staff.copyTo || "No copy") +
+      (pending.staff.missing.length ? row("Missing (complete later)", pending.staff.missing.join(", ")) : "")}</table></div>` : "") +
     `<div class="rv"><h2>Company &amp; Contact</h2><table>${Object.entries(pending.common).map(([k, v]) => row(cLabels[k], v)).join("")}</table></div>` +
     `<div class="rv"><h2>${escapeHTML(current.name)} Details</h2><table>${pending.details.map((d) => row(d.label, d.value)).join("")}</table></div>` +
     `<div class="rv"><h2>Attachments</h2><table>${files.length ? files.map((f) => row("File", f.name)).join("") : row("Files", "")}</table></div>`;
@@ -626,7 +727,9 @@ $("rvSubmit").onclick = async () => {
     if (payload.staff) {
       $("doneMsg").innerHTML = result.staff === false
         ? "<b style='color:var(--err)'>Warning: the Google script is not updated. It was saved as a normal customer inquiry and emails were sent.</b>"
-        : (payload.staff.sendCopy ? "Saved. A confirmation was sent to <b>" + escapeHTML(payload.common.email) + "</b>." : "Saved. No email was sent.") +
+        : (() => { const sent = []; if (payload.staff.sendCopy) sent.push("confirmation to <b>" + escapeHTML(payload.common.email) + "</b>");
+            if (payload.staff.copyTo) sent.push("copy to <b>" + escapeHTML(payload.staff.copyTo) + "</b>");
+            return sent.length ? "Saved. Sent " + sent.join(" and ") + "." : "Saved. No email was sent."; })() +
           "<br>It will appear in TDTS within 5 minutes (or press Sync now).";
       $("fixBox").hidden = true; $("newBtn").textContent = "Enter another inquiry"; $("doneTitle").textContent = "Inquiry saved.";
     }
@@ -649,6 +752,13 @@ function send(payload) {
   // DEMO
   if (payload.action === "staffcheck") return Promise.resolve(payload.pin.length >= 8
     ? { ok: true, sources: ["Phone call", "WhatsApp", "Walk-in", "Email", "Site visit", "Exhibition / event", "Other"] } : { ok: false, error: "Incorrect staff PIN." });
+  if (payload.action === "staffhistory") {
+    const all = [
+      { ref: "VIC-2610-0012", at: "2026-10-29 18:15", category: "Site Inspection", company: "ROHAS-EUCO INDUSTRIES BERHAD", address: "Lot 10, Bentong", pic: "Yusri", email: "victormax3308@gmail.com", tel: "017-901 9023", details: "Purpose of inspection: Check UTM", hasFiles: true, source: "Online form", enteredBy: "", incomplete: [] },
+      { ref: "VIC-2610-0011", at: "2026-10-29 17:02", category: "Calibration", company: "", address: "", pic: "Pak Ali", email: "", tel: "012-345 6789", details: "Equipment type: Hardness Tester", hasFiles: false, source: "Phone call", enteredBy: "Yusri", incomplete: ["Company name", "Serial no."] }];
+    const q = (payload.q || "").toLowerCase();
+    return Promise.resolve({ ok: true, rows: all.filter((x) => !q || JSON.stringify(x).toLowerCase().includes(q)) });
+  }
   if (payload.staff) payload.staff = { ...payload.staff, pin: "(hidden)" };
   console.log("DEMO payload", { ...payload, files: payload.files.map((f) => f.name) });
   window.__lastPayload = payload;
