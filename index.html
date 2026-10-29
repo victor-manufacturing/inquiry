@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Victor Manufacturing – Customer Inquiry</title>
+<title>Victor Manufacturing &#x2013; Customer Inquiry</title>
 <style>
   :root {
     --red: #C1282D; --red-dark: #9E1F23; --ink: #1F2328; --muted: #5F6670;
@@ -108,7 +108,7 @@
 
   <!-- Step 2: form -->
   <section id="stepForm" hidden>
-    <button type="button" class="back" id="backBtn">← Change category</button>
+    <button type="button" class="back" id="backBtn">&#x2190; Change category</button>
     <div><span class="pill" id="catPill"></span></div>
     <form id="form" novalidate>
       <div class="section">
@@ -124,7 +124,7 @@
         <div class="files">
           <label class="pick" for="fileInput">+ Add photos / PDF</label>
           <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,application/pdf" multiple>
-          <div class="hint">JPG, PNG or PDF · max 10 MB per file · up to 5 files</div>
+          <div class="hint">JPG, PNG or PDF &#xB7; max 10 MB per file &#xB7; up to 5 files</div>
           <ul class="flist" id="flist"></ul>
         </div>
         <div class="msg" id="fileMsg" style="display:block"></div>
@@ -145,7 +145,7 @@
   <!-- Step 3: done -->
   <section id="stepDone" hidden>
     <div class="done">
-      <div class="tick">✓</div>
+      <div class="tick">&#x2713;</div>
       <h1>Thank you! Your inquiry was received.</h1>
       <p class="lead">Your reference number:</p>
       <div class="ref" id="refNo"></div>
@@ -154,14 +154,14 @@
     </div>
   </section>
 
-  <footer>© Victor Manufacturing</footer>
+  <footer>&#xA9; Victor Manufacturing</footer>
 </div>
 
 <script>
 /* ===================== CONFIG ===================== */
 // Paste your Google Apps Script Web App URL here (only needed when hosting on GitHub Pages).
 // Leave empty "" for DEMO MODE. When hosted inside Apps Script, this is ignored.
-const ENDPOINT = "";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbzJEEqk3W5fT4tSbu_6fHSPg6GKemOgMzKO1BF3msp2V6DYUIOgiS5qDdlPfK9DC0g/exec";
 
 const MAX_FILE_MB = 10, MAX_FILES = 5, MAX_TOTAL_MB = 25;
 const FILE_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
@@ -177,19 +177,19 @@ const COMMON = [
 
 /* Categories and their own fields. Edit freely. */
 const CATEGORIES = [
-  { id: "new", name: "New Inquiry", ic: "📝", desc: "General question or quotation", files: "Attachments",
+  { id: "new", name: "New Inquiry", ic: "&#x1F4DD;", desc: "General question or quotation", files: "Attachments",
     fields: [
       { id: "subject", label: "Subject", type: "text", req: true },
       { id: "details", label: "Details", type: "textarea", req: true, ph: "Tell us what you need" },
     ] },
-  { id: "support", name: "Technical Support", ic: "🛠️", desc: "Machine or software problem", files: "Photos / screenshots",
+  { id: "support", name: "Technical Support", ic: "&#x1F6E0;&#xFE0F;", desc: "Machine or software problem", files: "Photos / screenshots",
     fields: [
       { id: "machine", label: "Machine name / model", type: "text", req: true },
       { id: "serial", label: "Serial no.", type: "text" },
       { id: "problem", label: "Problem description", type: "textarea", req: true, ph: "What happened? When did it start?" },
       { id: "error", label: "Error message (if any)", type: "text" },
     ] },
-  { id: "calibration", name: "Calibration", ic: "📏", desc: "Machine calibration service", files: "Photos / previous certificate",
+  { id: "calibration", name: "Calibration", ic: "&#x1F4CF;", desc: "Machine calibration service", files: "Photos / previous certificate",
     fields: [
       { id: "machine", label: "Machine name", type: "text", req: true },
       { id: "serial", label: "Serial no.", type: "text", req: true },
@@ -198,7 +198,7 @@ const CATEGORIES = [
       { id: "mode", label: "Calibration mode", type: "radio", req: true, options: ["Tensile", "Compression", "Both"] },
       { id: "location", label: "Service location", type: "radio", options: ["On-site", "Victor lab"] },
     ] },
-  { id: "jig", name: "Jig Fabrication", ic: "⚙️", desc: "Custom grips, jigs & fixtures", files: "Drawings / photos",
+  { id: "jig", name: "Jig Fabrication", ic: "&#x2699;&#xFE0F;", desc: "Custom grips, jigs & fixtures", files: "Drawings / photos",
     fields: [
       { id: "machine", label: "Machine model the jig is for", type: "text", req: true },
       { id: "testType", label: "Test type / standard", type: "text", req: true, ph: "e.g. Tensile, ASTM D638" },
@@ -206,14 +206,14 @@ const CATEGORIES = [
       { id: "qty", label: "Quantity", type: "number", req: true, min: 1 },
       { id: "reqDate", label: "Required date", type: "date" },
     ] },
-  { id: "site", name: "Site Inspection", ic: "📍", desc: "Visit to your site", files: "Photos",
+  { id: "site", name: "Site Inspection", ic: "&#x1F4CD;", desc: "Visit to your site", files: "Photos",
     fields: [
       { id: "siteAddress", label: "Site address (if different from company address)", type: "textarea", rows: 3 },
       { id: "purpose", label: "Purpose of inspection", type: "textarea", req: true },
       { id: "machines", label: "Machine(s) involved", type: "text" },
       { id: "prefDate", label: "Preferred date", type: "date" },
     ] },
-  { id: "purchase", name: "Machine Purchase", ic: "🏭", desc: "Buy a new testing machine", files: "Specifications / photos",
+  { id: "purchase", name: "Machine Purchase", ic: "&#x1F3ED;", desc: "Buy a new testing machine", files: "Specifications / photos",
     fields: [
       { id: "machineType", label: "Machine type", type: "text", req: true, ph: "e.g. Universal Testing Machine" },
       { id: "capacity", label: "Capacity", type: "text", ph: "e.g. 50 kN" },
@@ -222,7 +222,7 @@ const CATEGORIES = [
       { id: "deliveryDate", label: "Target delivery date", type: "date" },
       { id: "budget", label: "Budget", type: "text", opt: true },
     ] },
-  { id: "repair", name: "Repair & Maintenance", ic: "🔧", desc: "Fix or service a machine", files: "Photos",
+  { id: "repair", name: "Repair & Maintenance", ic: "&#x1F527;", desc: "Fix or service a machine", files: "Photos",
     fields: [
       { id: "machine", label: "Machine name", type: "text", req: true },
       { id: "serial", label: "Serial no.", type: "text" },
@@ -301,7 +301,7 @@ $("fileInput").onchange = (e) => {
 };
 function renderFiles() {
   $("flist").innerHTML = files.map((f, i) =>
-    `<li><span>${escapeHTML(f.name)} · ${f.size < 1048576 ? Math.max(1, Math.round(f.size / 1024)) + " KB" : (f.size / 1048576).toFixed(1) + " MB"}</span><button type="button" data-i="${i}">Remove</button></li>`).join("");
+    `<li><span>${escapeHTML(f.name)} &#xB7; ${f.size < 1048576 ? Math.max(1, Math.round(f.size / 1024)) + " KB" : (f.size / 1048576).toFixed(1) + " MB"}</span><button type="button" data-i="${i}">Remove</button></li>`).join("");
   $("flist").querySelectorAll("button").forEach((b) => (b.onclick = () => { files.splice(+b.dataset.i, 1); renderFiles(); }));
 }
 function escapeHTML(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]); }
@@ -346,7 +346,7 @@ $("form").onsubmit = async (e) => {
   e.preventDefault();
   $("alert").style.display = "none";
   if (!validate()) return;
-  const btn = $("submitBtn"); btn.disabled = true; btn.textContent = "Submitting…";
+  const btn = $("submitBtn"); btn.disabled = true; btn.textContent = "Submitting...";
   try {
     const payload = { category: current.name, categoryId: current.id, common: {}, details: [], website: $("website").value };
     COMMON.forEach((f) => (payload.common[f.id] = getVal(f)));
@@ -366,14 +366,7 @@ $("form").onsubmit = async (e) => {
 function send(payload) {
   if (IN_GAS) return new Promise((res, rej) =>
     google.script.run.withSuccessHandler(res).withFailureHandler((e) => rej(new Error(e.message || e))).submitInquiry(payload));
-  if (ENDPOINT) return fetch(ENDPOINT, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload) }).then((r) => r.json());
-  // DEMO
-  console.log("DEMO payload", { ...payload, files: payload.files.map((f) => f.name) });
-  window.__lastPayload = payload;
-  const d = new Date(), ref = `VIC-${String(d.getFullYear()).slice(2)}${String(d.getMonth() + 1).padStart(2, "0")}-0001`;
-  return new Promise((res) => setTimeout(() => res({ ok: true, ref }), 600));
-}
-</script>
-</body>
-</html>
+  if (ENDPOINT) return fetch(ENDPOINT, { method: "POST", credentials: "omit", redirect: "follow",
+    headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) })
+    .then((r) => r.text())
+    .then((t) => { try { return JSON.parse(t); } catch (e) { throw new Error("Server did not respo
