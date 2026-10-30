@@ -172,7 +172,8 @@
     <div class="section">
       <h2>Staff entry</h2>
       <p class="lead" style="margin-bottom:10px">Enter the staff PIN to record an inquiry on behalf of a customer.</p>
-      <input type="password" id="staffPin" autocomplete="current-password" placeholder="Staff PIN">
+      <input type="password" id="staffPin" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Staff PIN">
+      <label class="consent" style="margin-top:8px"><input type="checkbox" id="staffShow"><span>Show PIN</span></label>
       <div class="msg" id="staffPinMsg" style="display:block"></div>
       <label class="consent" style="margin-top:10px"><input type="checkbox" id="staffRemember"><span>Remember on this device (staff phones / office PCs only)</span></label>
       <button type="button" class="submit" id="staffUnlock" style="margin-top:12px">Unlock</button>
@@ -430,7 +431,8 @@ function exitStaff() {
   location.replace(location.pathname);
 }
 async function unlockStaff() {
-  const pin = $("staffPin").value.trim(); $("staffPinMsg").textContent = "";
+  // Clean up what phones sometimes insert: spaces, full-width characters, "smart" symbols.
+  const pin = $("staffPin").value.normalize("NFKC").replace(/\s+/g, ""); $("staffPinMsg").textContent = "";
   if (pin.length < 8) { $("staffPinMsg").textContent = "Enter the staff PIN."; return; }
   $("staffUnlock").disabled = true; $("staffUnlock").textContent = "Checking...";
   try {
@@ -440,6 +442,7 @@ async function unlockStaff() {
   finally { $("staffUnlock").disabled = false; $("staffUnlock").textContent = "Unlock"; }
 }
 $("staffUnlock").onclick = unlockStaff;
+$("staffShow").addEventListener("change", () => { $("staffPin").type = $("staffShow").checked ? "text" : "password"; });
 $("staffPin").addEventListener("keydown", (e) => { if (e.key === "Enter") unlockStaff(); });
 $("staffCancel").onclick = () => location.replace(location.pathname);
 $("staffExit").onclick = exitStaff;
