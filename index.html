@@ -142,6 +142,77 @@
   .hcard .edit { margin: 8px 0 0 6px; background: #FFF4D6; border: 1px solid #E8C766; color: #6B5200; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
   .chg-add { color: #15803d; font-weight: 700; } .chg-mod { color: #b45309; font-weight: 700; } .chg-del { color: #b91c1c; font-weight: 700; }
   body.editing #backBtn, body.editing .f[data-id="staffSource"], body.editing #staffCopyLbl, body.editing #staffCopyMsg { display: none !important; }
+  /* v2.0 promotions, packages, support plans */
+  .promo { background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--red); border-radius: 12px;
+    padding: 14px 16px; margin: 4px 0 16px; }
+  .promo .kick { font-size: 12px; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: .04em; }
+  .promo b.t { display: block; font-size: 17px; margin: 2px 0 4px; }
+  .promo p { margin: 0; font-size: 14px; color: var(--muted); }
+  .promo .when { color: var(--red); font-weight: 600; margin-top: 4px; }
+  .promo .go { margin-top: 10px; width: 100%; background: var(--red); color: #fff; border: 0; border-radius: 8px; padding: 11px;
+    font: inherit; font-weight: 700; cursor: pointer; }
+  .promo .go:hover { background: var(--red-dark); }
+  .cat.wide { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 12px; min-height: 0; border-left: 4px solid var(--red); }
+  .cat.wide .ic { font-size: 26px; }
+  .cat.wide div.tx { display: flex; flex-direction: column; gap: 2px; }
+  .plans-h { margin-top: 28px; }
+  .plans { display: grid; gap: 10px; }
+  .plan { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .plan.pop { border: 2px solid var(--red); }
+  .plan .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .plan .nm { font-weight: 700; font-size: 16px; }
+  .plan .tag { display: inline-block; background: var(--red); color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
+  .plan .pr { font-weight: 800; font-size: 20px; white-space: nowrap; }
+  .plan .pr small { font-weight: 400; font-size: 12.5px; color: var(--muted); }
+  .plan .rp { font-weight: 600; font-size: 14px; margin: 2px 0 6px; }
+  .plan ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+  .plan .ask { margin-top: 10px; width: 100%; background: #fff; border: 1.5px solid var(--red); color: var(--red); border-radius: 8px; padding: 9px;
+    font: inherit; font-weight: 700; cursor: pointer; }
+  .plan.pop .ask { background: var(--red); color: #fff; }
+  .fine { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+  .pk { display: grid; gap: 10px; margin-top: 12px; }
+  .pkc { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .pkc .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .pkc .nm { font-weight: 700; font-size: 16px; }
+  .pkc .pr { font-weight: 800; color: var(--red); font-size: 18px; white-space: nowrap; }
+  .pkc .sv { font-size: 12.5px; font-weight: 700; color: var(--ok); }
+  .pkc ul { margin: 6px 0 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+  .pkc .nt { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .pkc .go { margin-top: 10px; width: 100%; background: var(--red); color: #fff; border: 0; border-radius: 8px; padding: 10px; font: inherit; font-weight: 700; cursor: pointer; }
+  .vipnote { background: #FFF6F6; border: 1px solid #F1C9CB; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 13.5px; }
+  body.staff .promo, body.staff #plansBox { display: none; }
+  /* v2.0 layout: wider home page like the beta; forms keep their original width */
+  .wrap { max-width: 900px; }
+  #stepForm, #stepReview, #stepDone, #stepStaff, #stepHistory, #demoBanner, #staffBanner { max-width: 640px; margin-left: auto; margin-right: auto; }
+  header img { width: 220px; }
+  header p { font-size: 15px; }
+  #stepCat > h1, #stepPkg > h1, .plans-h { font-size: 24px; }
+  .promo { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 18px 20px; }
+  .promo .kick { text-transform: none; letter-spacing: 0; font-size: 13px; }
+  .promo b.t { font-size: 19px; }
+  .promo .go { width: auto; margin-top: 0; padding: 12px 20px; white-space: nowrap; }
+  .cats { gap: 14px; }
+  .cat { padding: 18px 20px; min-height: 0; border-radius: 14px; }
+  .cat .ic { font-size: 28px; }
+  .cat b { font-size: 18px; margin-top: 6px; }
+  .cat span { font-size: 14.5px; }
+  .plans { grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 4px; }
+  .plan { padding: 18px 20px; border-radius: 14px; display: flex; flex-direction: column; }
+  .plan .tag { margin: 0 0 6px; align-self: flex-start; }
+  .plan .nm { font-size: 18px; }
+  .plan .pr { font-size: 30px; margin: 2px 0; }
+  .plan .rp { margin: 4px 0 8px; }
+  .plan .ask { margin-top: auto; }
+  .plan ul { margin-bottom: 14px; }
+  .pk { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .pkc { display: flex; flex-direction: column; border-radius: 14px; }
+  .pkc .go { margin-top: auto; }
+  .pkc ul { margin-bottom: 10px; }
+  @media (max-width: 720px) { .plans { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) {
+    .promo { grid-template-columns: 1fr; } .promo .go { width: 100%; }
+    .cats { gap: 10px; } .cat { padding: 14px 12px; } .cat .ic { font-size: 22px; } .cat b { font-size: 15px; } .cat span { font-size: 12.5px; }
+  }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -183,9 +254,24 @@
 
   <!-- Step 1: category -->
   <section id="stepCat">
+    <div class="promo" id="promo" hidden></div>
     <h1>How can we help you?</h1>
     <p class="lead">Choose the type of inquiry.</p>
     <div class="cats" id="cats"></div>
+    <div id="plansBox">
+      <h1 class="plans-h">Get faster support</h1>
+      <p class="lead">Support plans for your testing machines. Remote help through this page and priority onsite booking.</p>
+      <div class="plans" id="plans"></div>
+      <p class="fine">Per machine, billed yearly. Remote support only; onsite visits, travel and parts are charged separately.</p>
+    </div>
+  </section>
+
+  <!-- Packages and promotions -->
+  <section id="stepPkg" hidden>
+    <button type="button" class="back" id="pkgBack">&#x2190; Back</button>
+    <h1>Packages and promotions</h1>
+    <p class="lead">Bundled services at a lower price than booking each one separately.</p>
+    <div class="pk" id="pkgs"></div>
   </section>
 
   <!-- Step 2: form -->
@@ -265,7 +351,7 @@
       <h1 id="doneTitle">Thank you! Your inquiry was received.</h1>
       <p class="lead">Your reference number:</p>
       <div class="ref" id="refNo"></div>
-      <p class="lead" id="doneMsg">A copy has been sent to <b id="doneEmail"></b>.<br>Our team will contact you soon.</p>
+      <p class="lead" id="doneMsg">A copy has been sent to <b id="doneEmail"></b>.<br>Our team will contact you soon.<span id="vipDone"></span></p>
       <div class="fixbox" id="fixBox"><b>Need to correct something?</b><br>Please don't submit a new form. Send us your correction with your reference number instead:
         <div style="margin-top:10px"><a class="wa-big" id="fixWa" target="_blank" rel="noopener" href="#">WhatsApp us your correction</a></div>
         <div class="hint">Or reply to the confirmation email.</div></div>
@@ -383,6 +469,53 @@ const CATEGORIES = [
     ] },
 ];
 
+/* ===== v2.0 Promotions, packages and support plans. Edit freely. ===== */
+const PROMO = { show: true, kicker: "Limited promotion", title: "Year-End Machine Health Package",
+  text: "Maintenance, accredited UTM calibration and operator training in one visit. From RM2,600.",
+  when: "Only 5 December slots. Book by 30 November.", pkg: "P1" };
+const PACKAGES = [
+  { code: "P1", active: true, name: "Year-End Machine Health Package", price: "From RM2,600", save: "Save about 15%",
+    items: ["Preventive maintenance", "Accredited UTM calibration", "Operator refresher training"], note: "Tabletop UTM up to 50 kN. Book by 30 November." },
+  { code: "P2", active: true, name: "Packaging Test Pack", price: "RM2,000", save: "Save 15%",
+    items: ["Coefficient of friction (COF)", "Heat seal", "Seal strength", "Bubble leak test"], note: "Results in 3 working days." },
+  { code: "P3", active: true, name: "Plastics Material Pack", price: "RM1,950", save: "Save 13%",
+    items: ["Melt flow index", "Tensile test", "Flexural test"], note: "Results in 3 working days." },
+  { code: "P4", active: true, name: "2027 Annual Maintenance Contract", price: "From RM5,000", save: "Save about 15%",
+    items: ["Quarterly preventive maintenance", "Yearly calibration", "Yearly operator training"], note: "Tabletop UTM. Invoiced 50% upfront, 50% mid-year." },
+  { code: "P5", active: false, name: "Prepaid Testing Credits", price: "RM6,400", save: "Save 20%", items: ["10 standard tensile test sets", "Use anytime in 2027"], note: "" },
+  { code: "P6", active: false, name: "Rubber and Glove QC Pack", price: "RM2,600 / month", save: "Save 20%", items: ["4 batch tensile tests a month"], note: "" },
+];
+const PLANS = [
+  { code: "BASIC", name: "Basic", price: "Free", per: "", reply: "Reply by next business day", items: ["Standard queue", "Calibration reminders"] },
+  { code: "VIP", name: "VIP", price: "RM100", per: "/month", reply: "Reply within 4 business hours", pop: true,
+    items: ["12 remote sessions a year", "10% off calibration and onsite labour", "Priority onsite booking"] },
+  { code: "VIPPLUS", name: "VIP Plus", price: "RM200", per: "/month", reply: "Reply within 2 business hours",
+    items: ["Unlimited remote sessions (fair use)", "15% off calibration, onsite labour and parts", "Onsite slot within 3 business days (Klang Valley)"] },
+];
+const VIP_FIELDS = [
+  { id: "vipNote", type: "note", html: "We reply by the next business day. <b>VIP members get a reply within 4 business hours (VIP Plus: 2 hours).</b>" },
+  { id: "vipCode", label: "VIP member code", type: "text", opt: true, ph: "e.g. VIP-0012" },
+];
+// Extra categories opened from the promotion banner, package list and plan buttons (not shown in the main grid).
+CATEGORIES.push(
+  { id: "package", name: "Package Booking", ic: "&#x1F381;", desc: "Book a package or promotion", files: "Attachments", hidden: true,
+    fields: [
+      { id: "package", label: "Package", type: "select", req: true, options: PACKAGES.map((p) => p.name) },
+      { id: "machine", label: "Machine (brand, model, capacity)", type: "text", ph: "e.g. Victor double column UTM, 50 kN" },
+      { id: "prefDate", label: "Preferred date", type: "date", minToday: true },
+      { id: "remarks", label: "Remarks", type: "textarea", rows: 3, opt: true, ph: "Anything we should know" },
+    ] },
+  { id: "plan", name: "Support Plan", ic: "&#x2B50;", desc: "VIP support plan inquiry", files: "Attachments", hidden: true,
+    fields: [
+      { id: "plan", label: "Support plan", type: "select", req: true, options: PLANS.filter((p) => p.code !== "BASIC").map((p) => p.name) },
+      { id: "machine", label: "Machine(s) to cover", type: "textarea", req: true, rows: 3, ph: "Brand, model, capacity and serial no. of each machine" },
+      { id: "qty", label: "Number of machines", type: "number", req: true, min: 1, max: 50, value: "1" },
+      { id: "remarks", label: "Questions or remarks", type: "textarea", rows: 3, opt: true },
+    ] }
+);
+// VIP member code on Technical Support and Repair & Maintenance.
+["support", "repair"].forEach((id) => { const c = CATEGORIES.find((x) => x.id === id); if (c) c.fields = VIP_FIELDS.concat(c.fields); });
+
 /* Demonstration venue (shown in the Machine Demonstration form) */
 const VENUE = {
   name: "Victor Manufacturing",
@@ -454,7 +587,7 @@ $("staffCc").addEventListener("change", () => {
 });
 function ccList() { return $("staffCcTo").value.split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean); }
 function showUnlock(msg) {
-  ["stepCat", "stepForm", "stepReview", "stepDone", "stepHistory"].forEach((x) => ($(x).hidden = true));
+  ["stepCat", "stepPkg", "stepForm", "stepReview", "stepDone", "stepHistory"].forEach((x) => ($(x).hidden = true));
   $("stepStaff").hidden = false; $("staffPinMsg").textContent = msg || "";
 }
 if (location.hash === "#staff") {
@@ -557,13 +690,56 @@ function changeRows(p) {
 $("year").textContent = new Date().getFullYear();
 
 // Build category buttons
-CATEGORIES.forEach((c) => {
+(function () {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "cat wide";
+  b.innerHTML = `<div class="ic">&#x1F381;</div><div class="tx"><b>Packages and promotions</b><span>Bundle services and save up to 20%</span></div>`;
+  b.onclick = () => { show("stepPkg"); try { history.pushState({ step: "pkg" }, ""); } catch (e) {} };
+  $("cats").appendChild(b);
+})();
+CATEGORIES.filter((c) => !c.hidden).forEach((c) => {
   const b = document.createElement("button");
   b.type = "button"; b.className = "cat";
   b.innerHTML = `<div class="ic">${c.ic}</div><b>${c.name}</b><span>${c.desc}</span>`;
-  b.onclick = () => openCategory(c.id);
+  b.onclick = () => { promoSource = ""; openCategory(c.id); };
   $("cats").appendChild(b);
 });
+
+/* v2.0: promotion banner, package list, support plans */
+let promoSource = "";
+function openWith(catId, fieldId, value, source) {
+  promoSource = source || "";
+  openCategory(catId);
+  const el = $("f_" + fieldId); if (el) el.value = value;
+}
+if (PROMO.show) {
+  const p = PACKAGES.find((x) => x.code === PROMO.pkg);
+  $("promo").innerHTML = `<div><div class="kick">${PROMO.kicker}</div><b class="t">${PROMO.title}</b><p>${PROMO.text}</p><p class="when">${PROMO.when}</p></div>` +
+    `<button type="button" class="go" id="promoGo">Book this package</button>`;
+  $("promo").hidden = false;
+  $("promoGo").onclick = () => openWith("package", "package", p ? p.name : "", "banner-" + PROMO.pkg);
+}
+PACKAGES.filter((p) => p.active).forEach((p) => {
+  const d = document.createElement("div"); d.className = "pkc";
+  d.innerHTML = `<span class="nm">${p.name}</span><span class="pr" style="font-size:26px">${p.price}</span><div class="sv">${p.save}</div>` +
+    `<ul>${p.items.map((i) => `<li>${i}</li>`).join("")}</ul>${p.note ? `<div class="nt">${p.note}</div>` : ""}`;
+  const g = document.createElement("button"); g.type = "button"; g.className = "go"; g.textContent = "Book this package";
+  g.onclick = () => openWith("package", "package", p.name, "package-" + p.code);
+  d.appendChild(g); $("pkgs").appendChild(d);
+});
+PLANS.forEach((p) => {
+  const d = document.createElement("div"); d.className = "plan" + (p.pop ? " pop" : "");
+  d.innerHTML = `${p.pop ? '<span class="tag">Most popular</span>' : ""}<span class="nm">${p.name}</span>` +
+    `<span class="pr">${p.price}${p.per ? ` <small>${p.per}</small>` : ""}</span><div class="rp">${p.reply}</div>` +
+    `<ul>${p.items.map((i) => `<li>${i}</li>`).join("")}</ul>`;
+  if (p.code !== "BASIC") {
+    const g = document.createElement("button"); g.type = "button"; g.className = "ask"; g.textContent = "Ask about " + p.name;
+    g.onclick = () => openWith("plan", "plan", p.name, "plan-" + p.code);
+    d.appendChild(g);
+  }
+  $("plans").appendChild(d);
+});
+$("pkgBack").onclick = () => show("stepCat");
 
 function todayISO() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
 function venueHTML() {
@@ -589,10 +765,11 @@ document.addEventListener("click", (e) => {
   const b = e.target.closest("[data-copy]"); if (!b) return;
   copyText(b.dataset.copy === "map" ? VENUE.map : VENUE.name + ", " + VENUE.address, b);
 });
-const inputFields = (list) => list.filter((f) => f.type !== "info" && isShown(f));
+const inputFields = (list) => list.filter((f) => f.type !== "info" && f.type !== "note" && isShown(f));
 
 function fieldHTML(f) {
   if (f.type === "info") return venueHTML();
+  if (f.type === "note") return `<div class="vipnote" data-id="${f.id}">${f.html}</div>`;
   const star = f.req ? ' <span class="req">*</span>' : (f.opt ? ' <span class="opt">(optional)</span>' : "");
   const name = `f_${f.id}`;
   const ph = f.ph ? ` placeholder="${f.ph}"` : "";
@@ -627,11 +804,11 @@ function openCategory(id) {
 }
 
 function show(step) {
-  ["stepStaff", "stepHistory", "stepCat", "stepForm", "stepReview", "stepDone"].forEach((s) => ($(s).hidden = s !== step));
+  ["stepStaff", "stepHistory", "stepCat", "stepPkg", "stepForm", "stepReview", "stepDone"].forEach((s) => ($(s).hidden = s !== step));
   window.scrollTo(0, 0);
 }
 $("backBtn").onclick = () => show("stepCat");
-window.onpopstate = () => { if (!$("stepForm").hidden) show("stepCat"); };
+window.onpopstate = () => { if (!$("stepForm").hidden || !$("stepPkg").hidden) show("stepCat"); };
 function resetAll() {
   if (editing && !startingEdit) endEdit();
   $("form").reset(); $("commonFields").innerHTML = ""; files = []; renderFiles();
@@ -742,7 +919,7 @@ $("form").onsubmit = (e) => {
   e.preventDefault();
   $("alert").style.display = "none";
   if (!validate()) return;
-  pending = { category: current.name, categoryId: current.id, common: {}, details: [], website: $("website").value };
+  pending = { category: current.name, categoryId: current.id, common: {}, details: [], website: $("website").value, promoSource, pageVersion: "2.0" };
   if (staff) {
     const cc = $("staffCc").checked ? ccList() : [];
     if (cc.length) { try { localStorage.setItem("vicStaffCc", cc.join(", ")); } catch (e) {} }
@@ -813,6 +990,10 @@ $("rvSubmit").onclick = async () => {
             return sent.length ? "Saved. Sent " + sent.join(" and ") + "." : "Saved. No email was sent."; })() +
           "<br>It will appear in TDTS within 5 minutes (or press Sync now).";
       $("fixBox").hidden = true; $("newBtn").textContent = "Enter another inquiry"; $("doneTitle").textContent = "Inquiry saved.";
+    }
+    if (!payload.staff) {
+      const vip = payload.details.find((d) => d.id === "vipCode" && d.value);
+      if ($("vipDone")) $("vipDone").innerHTML = vip ? "<br>If your VIP code is active, we will reply within 4 business hours (VIP Plus: 2 hours)." : "";
     }
     $("fixWa").href = "https://wa.me/60182215168?text=" + encodeURIComponent("Hi Victor Manufacturing, I need to correct my inquiry " + result.ref + ": ");
     pending = null;
